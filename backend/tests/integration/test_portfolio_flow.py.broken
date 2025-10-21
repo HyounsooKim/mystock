@@ -1,0 +1,422 @@
+"""Integration tests for portfolio flow.
+
+Tests the complete portfolio management workflow:
+- View auto-created portfolios (3 predefined)
+- Add holdings to portfolio
+- View portfolio summary with aggregated P&L
+- Update holding quantities/prices
+- Delete holdings
+- Portfolio isolation between users
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+
+
+def test_auto_created_portfolios(authenticated_client: tuple):
+    """Test that 3 portfolios are auto-created on user registration.
+    
+    This verifies:
+    - Registration creates 3 portfolios
+    - Portfolio names are "장기투자", "단타", "정찰병"
+    - Each portfolio is empty initially
+    """
+    client, _ = authenticated_client
+    
+    # Get portfolios list
+    response = client.get("/api/v1/portfolios")
+    assert response.status_code == 200
+    
+    portfolios = response.json()
+    summary = summary_response["summary"]
+    assert len(portfolios) == 3
+    
+    # Verify predefined names
+    portfolio_names = {p["name"] for p in portfolios}
+    assert portfolio_names == {"장기투자", "단타", "정찰병"}
+    
+    # All should be empty initially
+    for portfolio in portfolios:
+        assert portfolio["holdings_count"] == 0
+
+
+def test_complete_portfolio_flow(authenticated_client: tuple):
+    """Test complete portfolio flow: add holding → view summary → update → delete.
+    
+    This verifies:
+    - Adding holdings with symbol, shares, avg_price
+    - Portfolio summary calculation (total value, P&L)
+    - Updating holding quantities
+    - Deleting holdings
+    """
+    client, _ = authenticated_client
+    
+    # Step 1: Get portfolios and select first one
+    response = client.get("/api/v1/portfolios")
+    assert response.status_code == 200
+    
+    portfolios = response.json()
+    summary = summary_response["summary"]
+    portfolio_id = portfolios[0]["id"]
+    
+    # Step 2: Add first holding (AAPL)
+    holding_data = {
+        "symbol": "AAPL",
+        "quantity": 10,
+        "avg_price": 150.00
+    }
+    
+    response = client.post(f"/api/v1/portfolios/{portfolio_id}/holdings", json=holding_data)
+    assert response.status_code == 201
+    
+    holding1 = response.json()
+    summary = summary_response["summary"]
+    assert holding1["symbol"] == "AAPL"
+    assert holding1["quantity"] == 10
+    assert float(holding1["avg_price"]) == 150.00
+    holding1_id = holding1["id"]
+    
+    # Step 3: Add second holding (NVDA)
+    response = client.post(f"/api/v1/portfolios/{portfolio_id}/holdings", json={
+        "symbol": "NVDA",
+        "quantity": 5,
+        "avg_price": 500.00
+    })
+    assert response.status_code == 201
+    holding2_id = response.json()
+    summary = summary_response["summary"]["id"]
+    
+    # Step 4: Get portfolio summary
+    response = client.get(f"/api/v1/portfolios/{portfolio_id}/summary")
+    assert response.status_code == 200
+    
+    summary_response = response.json()
+    summary = summary_response["summary"]
+    assert summary_response["portfolio"]["id"] == portfolio_id
+    assert len(summary_response["holdings"]) == 2
+    
+    summary = summary_response["summary"]
+    assert summary_response["summary"]["total_holdings"] == 2
+    
+    # Cost basis should be: (10 * 150) + (5 * 500) = 1500 + 2500 = 4000
+    assert float(summary_response["summary"]["total_cost_basis"]) == 4000.00
+    
+    # Current value and P&L depend on real-time prices
+    # Just verify they exist and are numbers
+    assert "total_current_value" in summary
+    assert "total_profit_loss" in summary
+    assert "total_return_rate" in summary
+    
+    # Step 5: Update holding quantity (AAPL: 10 → 15 shares)
+    response = client.put(
+        f"/api/v1/portfolios/{portfolio_id}/holdings/{holding1_id}",
+        json={"quantity": 15, "avg_price": 150.00}
+    )
+    assert response.status_code == 200
+    
+    updated_holding = response.json()
+    summary = summary_response["summary"]
+    assert updated_holding["quantity"] == 15
+    
+    # Step 6: Delete NVDA holding
+    response = client.delete(f"/api/v1/portfolios/{portfolio_id}/holdings/{holding2_id}")
+    assert response.status_code == 204
+    
+    # Step 7: Verify portfolio has only 1 holding now
+    response = client.get(f"/api/v1/portfolios/{portfolio_id}/summary")
+    assert response.status_code == 200
+    
+    summary_response = response.json()
+    summary = summary_response["summary"]
+    assert len(summary_response["holdings"]) == 1
+    summary = summary_response["summary"]
+    assert summary_response["summary"]["total_holdings"] == 1
+
+
+def test_portfolio_holdings_with_real_prices(authenticated_client: tuple):
+    """Test portfolio P&L calculation with real stock prices.
+    
+    Note: This test may make actual yfinance API calls.
+    """
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Add holdings with known average prices
+    holdings = [
+        {"symbol": "AAPL", "quantity": 10, "avg_price": 150.00},
+        {"symbol": "GOOGL", "quantity": 5, "avg_price": 140.00},
+        {"symbol": "MSFT", "quantity": 8, "avg_price": 350.00}
+    ]
+    
+    for holding_data in holdings:
+        response = client.post(
+            f"/api/v1/portfolios/{portfolio_id}/holdings",
+            json=holding_data
+        )
+        assert response.status_code == 201
+    
+    # Get summary with real-time prices
+    response = client.get(f"/api/v1/portfolios/{portfolio_id}/summary")
+    assert response.status_code == 200
+
+    
+    summary_response = response.json()
+    
+    summary = summary_response["summary"]
+    
+    # Total cost basis: (10*150) + (5*140) + (8*350) = 1500 + 700 + 2800 = 5000
+    assert summary_response["summary"]["total_cost_basis"] == 5000.00
+    
+    # Current value should be calculated with real prices
+    assert summary_response["summary"]["total_current_value"] > 0
+    
+    # Gain/loss should be calculated
+    expected_gain_loss = summary_response["summary"]["total_current_value"] - summary_response["summary"]["total_cost_basis"]
+    assert abs(summary_response["summary"]["total_gain_loss"] - expected_gain_loss) < 0.01
+    
+    # Gain/loss percentage
+    expected_pct = (expected_gain_loss / summary_response["summary"]["total_cost_basis"]) * 100
+    assert abs(summary_response["summary"]["total_gain_loss_pct"] - expected_pct) < 0.01
+
+
+def test_portfolio_with_korean_stocks(authenticated_client: tuple):
+    """Test portfolio with Korean stocks (KRW currency)."""
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Add Korean stock (Samsung Electronics)
+    response = client.post(
+        f"/api/v1/portfolios/{portfolio_id}/holdings",
+        json={
+            "symbol": "005930.KS",
+            "quantity": 10,
+            "avg_price": 70000.00  # KRW price
+        }
+    )
+    
+    if response.status_code == 201:
+        # Get summary
+        response = client.get(f"/api/v1/portfolios/{portfolio_id}/summary")
+        assert response.status_code == 200
+
+        
+        summary_response = response.json()
+        
+        summary = summary_response["summary"]
+        assert summary["total_cost_basis"] == 700000.00
+
+
+def test_portfolio_isolation_between_users(client: TestClient):
+    """Test that users can only access their own portfolios."""
+    # Create user 1
+    user1_data = {
+        "email": "user1_portfolio@example.com",
+        "password": "Password123",
+        "full_name": "User One"
+    }
+    response = client.post("/api/v1/auth/register", json=user1_data)
+    assert response.status_code == 200
+    
+    # Login as user1
+    response = client.post("/api/v1/auth/login", json={
+        "email": user1_data["email"],
+        "password": user1_data["password"]
+    })
+    token1 = response.json()
+    summary = summary_response["summary"]["access_token"]
+    headers1 = {"Authorization": f"Bearer {token1}"}
+    
+    # Get user1's portfolios
+    response = client.get("/api/v1/portfolios", headers=headers1)
+    assert response.status_code == 200
+    user1_portfolios = response.json()
+    summary = summary_response["summary"]
+    user1_portfolio_id = user1_portfolios[0]["id"]
+    
+    # Add holding for user1
+    response = client.post(
+        f"/api/v1/portfolios/{user1_portfolio_id}/holdings",
+        json={"symbol": "AAPL", "quantity": 10, "avg_price": 150.00},
+        headers=headers1
+    )
+    assert response.status_code == 201
+    
+    # Create user 2
+    user2_data = {
+        "email": "user2_portfolio@example.com",
+        "password": "Password123",
+        "full_name": "User Two"
+    }
+    response = client.post("/api/v1/auth/register", json=user2_data)
+    assert response.status_code == 200
+    
+    # Login as user2
+    response = client.post("/api/v1/auth/login", json={
+        "email": user2_data["email"],
+        "password": user2_data["password"]
+    })
+    token2 = response.json()
+    summary = summary_response["summary"]["access_token"]
+    headers2 = {"Authorization": f"Bearer {token2}"}
+    
+    # User2 should NOT be able to access user1's portfolio
+    response = client.get(f"/api/v1/portfolios/{user1_portfolio_id}/summary", headers=headers2)
+    assert response.status_code == 404  # Not found (or 403 Forbidden)
+
+
+def test_add_duplicate_symbol_to_portfolio(authenticated_client: tuple):
+    """Test adding the same symbol twice to a portfolio.
+    
+    This should either:
+    - Reject with 409 Conflict, or
+    - Update existing holding (merge)
+    """
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Add AAPL first time
+    response = client.post(
+        f"/api/v1/portfolios/{portfolio_id}/holdings",
+        json={"symbol": "AAPL", "quantity": 10, "avg_price": 150.00}
+    )
+    assert response.status_code == 201
+    
+    # Try to add AAPL again
+    response = client.post(
+        f"/api/v1/portfolios/{portfolio_id}/holdings",
+        json={"symbol": "AAPL", "quantity": 5, "avg_price": 160.00}
+    )
+    
+    # Either conflict or allowed (depends on business logic)
+    assert response.status_code in [201, 409]
+
+
+def test_portfolio_100_holdings_limit(authenticated_client: tuple):
+    """Test that portfolio enforces 100-holding limit."""
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Add 100 holdings
+    for i in range(100):
+        symbol = f"STOCK{i:03d}"
+        response = client.post(
+            f"/api/v1/portfolios/{portfolio_id}/holdings",
+            json={"symbol": symbol, "quantity": 1, "avg_price": 100.00}
+        )
+        # Should succeed for first 100
+        if i < 100:
+            assert response.status_code == 201
+    
+    # Try to add 101st holding
+    response = client.post(
+        f"/api/v1/portfolios/{portfolio_id}/holdings",
+        json={"symbol": "STOCK101", "quantity": 1, "avg_price": 100.00}
+    )
+    # Should fail with limit error
+    assert response.status_code == 400
+    assert "limit" in response.json()["detail"].lower()
+
+
+def test_update_nonexistent_holding(authenticated_client: tuple):
+    """Test updating a non-existent holding returns 404."""
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Try to update non-existent holding
+    response = client.put(
+        f"/api/v1/portfolios/{portfolio_id}/holdings/99999",
+        json={"quantity": 10, "avg_price": 150.00}
+    )
+    assert response.status_code == 404
+
+
+def test_delete_nonexistent_holding(authenticated_client: tuple):
+    """Test deleting a non-existent holding returns 404."""
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Try to delete non-existent holding
+    response = client.delete(f"/api/v1/portfolios/{portfolio_id}/holdings/99999")
+    assert response.status_code == 404
+
+
+def test_portfolio_summary_empty_portfolio(authenticated_client: tuple):
+    """Test portfolio summary for empty portfolio."""
+    client, _ = authenticated_client
+    
+    # Get portfolio (should be empty)
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Get summary of empty portfolio
+    response = client.get(f"/api/v1/portfolios/{portfolio_id}/summary")
+    assert response.status_code == 200
+
+    
+    summary_response = response.json()
+    
+    summary = summary_response["summary"]
+    assert summary_response["summary"]["holdings_count"] == 0
+    assert summary_response["summary"]["total_cost_basis"] == 0.0
+    assert summary_response["summary"]["total_current_value"] == 0.0
+    assert summary_response["summary"]["total_gain_loss"] == 0.0
+    assert summary_response["summary"]["total_gain_loss_pct"] == 0.0
+
+
+def test_negative_shares_validation(authenticated_client: tuple):
+    """Test that negative share quantities are rejected."""
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Try to add holding with negative shares
+    response = client.post(
+        f"/api/v1/portfolios/{portfolio_id}/holdings",
+        json={"symbol": "AAPL", "quantity": -10, "avg_price": 150.00}
+    )
+    assert response.status_code == 422  # Validation error
+
+
+def test_negative_price_validation(authenticated_client: tuple):
+    """Test that negative average prices are rejected."""
+    client, _ = authenticated_client
+    
+    # Get portfolio
+    response = client.get("/api/v1/portfolios")
+    portfolio_id = response.json()
+    summary = summary_response["summary"][0]["id"]
+    
+    # Try to add holding with negative price
+    response = client.post(
+        f"/api/v1/portfolios/{portfolio_id}/holdings",
+        json={"symbol": "AAPL", "quantity": 10, "avg_price": -150.00}
+    )
+    assert response.status_code == 422  # Validation error

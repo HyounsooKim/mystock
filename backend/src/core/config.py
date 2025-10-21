@@ -1,0 +1,80 @@
+"""Configuration management for MyStock application.
+
+Loads environment variables and provides typed configuration settings.
+"""
+
+from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from typing import List, Union
+import secrets
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables.
+    
+    All settings can be overridden via .env file in backend directory.
+    """
+    
+    # Application Settings
+    APP_NAME: str = "MyStock API"
+    APP_VERSION: str = "1.0.0"
+    APP_HOST: str = "0.0.0.0"
+    APP_PORT: int = 8000
+    DEBUG: bool = False
+    
+    # Database Settings
+    DATABASE_URL: str
+    DATABASE_POOL_SIZE: int = 10
+    DATABASE_MAX_OVERFLOW: int = 20
+    DATABASE_POOL_RECYCLE: int = 3600
+    
+    # Security Settings
+    SECRET_KEY: str = secrets.token_urlsafe(32)
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_HOURS: int = 24
+    
+    # CORS Settings
+    CORS_ORIGINS: Union[List[str], str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ]
+    CORS_CREDENTIALS: bool = True
+    CORS_METHODS: List[str] = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    CORS_HEADERS: List[str] = ["*"]
+    
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS_ORIGINS from comma-separated string or list."""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v
+    
+    # Stock API Settings
+    STOCK_CACHE_TTL_SECONDS: int = 300  # 5 minutes
+    STOCK_API_TIMEOUT_SECONDS: int = 10
+    STOCK_API_MAX_RETRIES: int = 3
+    
+    # Rate Limiting
+    RATE_LIMIT_PER_MINUTE: int = 60
+    
+    # Pagination
+    MAX_PAGE_SIZE: int = 100
+    DEFAULT_PAGE_SIZE: int = 20
+    
+    # Business Logic Constraints
+    MAX_WATCHLIST_ITEMS: int = 50
+    MAX_HOLDINGS_PER_PORTFOLIO: int = 100
+    PORTFOLIO_NAMES: List[str] = ["장기투자", "단타", "정찰병"]
+    
+    class Config:
+        """Pydantic configuration."""
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = True
+
+
+# Global settings instance
+settings = Settings()
