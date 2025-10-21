@@ -33,7 +33,7 @@ jobs:
           output_location: "dist" # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
         env:
-          VITE_API_BASE_URL: https://mystock-mvp-api.icyisland-4fd84ad8.koreacentral.azurecontainerapps.io/api/v1
+          VITE_API_BASE_URL: https://mystock-mvp-api-vnet.purplepond-c13b3e3d.koreacentral.azurecontainerapps.io/api/v1
           VITE_ENABLE_MOCK_API: "false"
 
   close_pull_request_job:
