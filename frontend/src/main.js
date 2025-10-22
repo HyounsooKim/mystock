@@ -16,7 +16,7 @@ app.use(router)
 
 // Initialize auth state from localStorage
 const authStore = useAuthStore()
-authStore.initializeAuth()
+authStore.initializeAuth() 
 
 // Mount app
 app.mount('#app')
