@@ -1,0 +1,154 @@
+{
+  "id": "/subscriptions/0cbd9693-b8d7-45ca-94cf-d4313c7ca18a/resourceGroups/mystock-mvp-rg/providers/Microsoft.App/containerapps/mystock-mvp-api",
+  "identity": {
+    "type": "None"
+  },
+  "location": "Korea Central",
+  "name": "mystock-mvp-api",
+  "properties": {
+    "configuration": {
+      "activeRevisionsMode": "Single",
+      "dapr": null,
+      "identitySettings": [],
+      "ingress": {
+        "additionalPortMappings": null,
+        "allowInsecure": false,
+        "clientCertificateMode": null,
+        "corsPolicy": null,
+        "customDomains": null,
+        "exposedPort": 0,
+        "external": true,
+        "fqdn": "mystock-mvp-api.icyisland-4fd84ad8.koreacentral.azurecontainerapps.io",
+        "ipSecurityRestrictions": null,
+        "stickySessions": null,
+        "targetPort": 8000,
+        "traffic": [
+          {
+            "latestRevision": true,
+            "weight": 100
+          }
+        ],
+        "transport": "Auto"
+      },
+      "maxInactiveRevisions": 100,
+      "registries": [
+        {
+          "identity": "",
+          "passwordSecretRef": "mystockmvpacrazurecrio-mystockmvpacr",
+          "server": "mystockmvpacr.azurecr.io",
+          "username": "mystockmvpacr"
+        }
+      ],
+      "runtime": null,
+      "secrets": [
+        {
+          "name": "mystockmvpacrazurecrio-mystockmvpacr"
+        }
+      ],
+      "service": null
+    },
+    "customDomainVerificationId": "B1A12316381A53C46655BDD7C6589697E6F77A0D6BC4E72E381C944424D7C714",
+    "delegatedIdentities": [],
+    "environmentId": "/subscriptions/0cbd9693-b8d7-45ca-94cf-d4313c7ca18a/resourceGroups/mystock-mvp-rg/providers/Microsoft.App/managedEnvironments/mystock-mvp-env",
+    "eventStreamEndpoint": "https://koreacentral.azurecontainerapps.dev/subscriptions/0cbd9693-b8d7-45ca-94cf-d4313c7ca18a/resourceGroups/mystock-mvp-rg/containerApps/mystock-mvp-api/eventstream",
+    "latestReadyRevisionName": "mystock-mvp-api--0000003",
+    "latestRevisionFqdn": "mystock-mvp-api--0000004.icyisland-4fd84ad8.koreacentral.azurecontainerapps.io",
+    "latestRevisionName": "mystock-mvp-api--0000004",
+    "managedEnvironmentId": "/subscriptions/0cbd9693-b8d7-45ca-94cf-d4313c7ca18a/resourceGroups/mystock-mvp-rg/providers/Microsoft.App/managedEnvironments/mystock-mvp-env",
+    "outboundIpAddresses": [
+      "20.196.245.96",
+      "20.196.230.88",
+      "20.196.245.104",
+      "20.196.245.78",
+      "20.214.78.198",
+      "20.214.113.92",
+      "20.214.113.18",
+      "20.214.78.11",
+      "20.214.78.31",
+      "20.214.78.175",
+      "20.196.231.61",
+      "20.196.243.56",
+      "20.196.225.8",
+      "20.196.227.38",
+      "20.214.118.111",
+      "20.214.118.57",
+      "20.214.118.62",
+      "20.214.118.42",
+      "20.214.118.53",
+      "20.214.118.100",
+      "20.214.209.13"
+    ],
+    "provisioningState": "Succeeded",
+    "runningStatus": "Running",
+    "template": {
+      "containers": [
+        {
+          "env": [
+            {
+              "name": "DATABASE_URL",
+              "value": ""
+            },
+            {
+              "name": "JWT_SECRET",
+              "value": ""
+            },
+            {
+              "name": "JWT_ALGORITHM",
+              "value": "HS256"
+            },
+            {
+              "name": "ACCESS_TOKEN_EXPIRE_MINUTES",
+              "value": "1440"
+            },
+            {
+              "name": "DEBUG",
+              "value": "False"
+            },
+            {
+              "name": "ENVIRONMENT",
+              "value": "production"
+            },
+            {
+              "name": "CORS_ORIGINS",
+              "value": "http://localhost:5173,https://jolly-moss-0acbb8b00.3.azurestaticapps.net"
+            },
+            {
+              "name": "UPDATED_AT",
+              "value": "1761048967"
+            }
+          ],
+          "image": "mystockmvpacr.azurecr.io/mystock-backend:latest",
+          "name": "mystock-mvp-api",
+          "resources": {
+            "cpu": 0.5,
+            "ephemeralStorage": "2Gi",
+            "memory": "1Gi"
+          }
+        }
+      ],
+      "initContainers": null,
+      "revisionSuffix": "",
+      "scale": {
+        "cooldownPeriod": 300,
+        "maxReplicas": 2,
+        "minReplicas": 1,
+        "pollingInterval": 30,
+        "rules": null
+      },
+      "serviceBinds": null,
+      "terminationGracePeriodSeconds": null,
+      "volumes": null
+    },
+    "workloadProfileName": "Consumption"
+  },
+  "resourceGroup": "mystock-mvp-rg",
+  "systemData": {
+    "createdAt": "2025-10-21T11:21:04.386393",
+    "createdBy": "studydev@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2025-10-21T12:16:09.030945",
+    "lastModifiedBy": "studydev@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "type": "Microsoft.App/containerApps"
+}

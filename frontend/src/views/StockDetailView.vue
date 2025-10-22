@@ -36,7 +36,7 @@
                   
                   <!-- Sparkline (변동률 뒤) -->
                   <div class="d-flex align-items-center gap-2">
-                    <span class="text-muted small">최근 24h</span>
+                    <span class="text-muted small">최근</span>
                     <div 
                       id="stock-sparkline" 
                       class="sparkline-container"
@@ -275,11 +275,11 @@ const fetchNews = async () => {
   }
 }
 
-// Fetch sparkline data (5분봉 1일)
+// Fetch sparkline data (1시간봉)
 async function fetchSparklineData() {
   try {
     const response = await apiClient.get(`/stocks/${symbol}/chart`, {
-      params: { period: '5m' }  // 5분봉 1일
+      params: { period: '1h' }  // 1시간봉
     })
     return response.data.candlesticks || []
   } catch (error) {

@@ -1,0 +1,918 @@
+openapi: 3.0.3
+info:
+  title: MyStock Personalized Stock Portfolio API
+  description: |
+    REST API for managing personalized stock portfolios with Korea (KOSPI/KOSDAQ) and US (NYSE/NASDAQ) market support.
+    
+    **Features**:
+    - User authentication (email/password)
+    - Watchlist management (up to 50 items)
+    - Real-time stock quotes with 5-minute cache
+    - Three predefined portfolios ("장기투자", "단타", "정찰병")
+    - Historical candlestick data (5 period options)
+    
+    **Performance Targets**:
+    - Watchlist load: <3s for 50 items
+    - Stock quote display: <1s with cache
+    - Portfolio operations: <2min end-to-end
+  version: 1.0.0
+  contact:
+    name: MyStock Development Team
+    email: dev@mystock.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.mystock.example.com/api/v1
+    description: Production server (Azure Container Apps)
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+
+tags:
+  - name: auth
+    description: User authentication operations
+  - name: watchlist
+    description: Watchlist management (FR-003 through FR-006)
+  - name: stock
+    description: Stock quote and candlestick data (FR-007 through FR-010)
+  - name: portfolio
+    description: Portfolio and holdings management (FR-013 through FR-019)
+  - name: health
+    description: Health check and monitoring
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ==================== Authentication ====================
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register new user account (FR-001)
+      description: Create a new user account with email/password. Automatically creates 3 predefined portfolios.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                  description: Valid email address
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: SecurePass123
+                  description: Min 8 chars, one uppercase, one lowercase, one digit
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Email already registered"
+                code: "EMAIL_EXISTS"
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login to existing account (FR-002)
+      description: Authenticate with email/password and receive JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    description: JWT access token (valid 24 hours)
+                  token_type:
+                    type: string
+                    example: bearer
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Get current user profile
+      description: Retrieve authenticated user's profile information
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Watchlist ====================
+  /watchlist:
+    get:
+      tags: [watchlist]
+      summary: Get user's watchlist (FR-003)
+      description: Retrieve all watchlist items sorted by display_order (max 50 items)
+      parameters:
+        - name: include_quotes
+          in: query
+          description: Include current stock quotes (5-min cache)
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Watchlist retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  watchlist:
+                    type: array
+                    maxItems: 50
+                    items:
+                      $ref: '#/components/schemas/WatchlistItem'
+                  total_count:
+                    type: integer
+                    example: 12
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [watchlist]
+      summary: Add stock to watchlist (FR-004)
+      description: Add a new stock symbol to watchlist (max 50 items)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbol]
+              properties:
+                symbol:
+                  type: string
+                  example: AAPL
+                  description: Stock ticker (AAPL, 005930.KS, etc.)
+                display_order:
+                  type: integer
+                  minimum: 0
+                  maximum: 49
+                  example: 0
+                  description: Sort order (auto-calculated if omitted)
+                notes:
+                  type: string
+                  maxLength: 1000
+                  example: "애플 장기 보유"
+                  description: Optional user notes
+      responses:
+        '201':
+          description: Stock added to watchlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Symbol already in watchlist or limit reached (50 items)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Watchlist limit reached (50 items)"
+                code: "WATCHLIST_LIMIT"
+
+  /watchlist/{symbol}:
+    delete:
+      tags: [watchlist]
+      summary: Remove stock from watchlist (FR-005)
+      description: Delete a stock symbol from user's watchlist
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+      responses:
+        '204':
+          description: Stock removed successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [watchlist]
+      summary: Update watchlist item (FR-006)
+      description: Update display order or notes for a watchlist item
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_order:
+                  type: integer
+                  minimum: 0
+                  maximum: 49
+                  example: 5
+                notes:
+                  type: string
+                  maxLength: 1000
+                  example: "Updated notes"
+      responses:
+        '200':
+          description: Watchlist item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Stock Data ====================
+  /stock/{symbol}:
+    get:
+      tags: [stock]
+      summary: Get stock quote (FR-007)
+      description: Retrieve current stock quote from cache (5-min TTL) or fetch from yfinance
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+          description: Stock ticker (AAPL, 005930.KS, etc.)
+      responses:
+        '200':
+          description: Stock quote retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockQuote'
+        '404':
+          description: Symbol not found or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Symbol not found: INVALID"
+                code: "SYMBOL_NOT_FOUND"
+
+  /stock/{symbol}/candlestick:
+    get:
+      tags: [stock]
+      summary: Get candlestick data for chart (FR-008, FR-009)
+      description: Retrieve historical OHLCV data for candlestick charts
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ['30m', '1h', '1d', '1wk', '1mo']
+          example: 1d
+          description: |
+            Chart period options:
+            - 30m: 2-day period with 30-minute intervals
+            - 1h: 1-week period with 1-hour intervals
+            - 1d: 6-month period with daily candles
+            - 1wk: 2-year period with weekly candles
+            - 1mo: 7-year period with monthly candles
+      responses:
+        '200':
+          description: Candlestick data retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symbol:
+                    type: string
+                    example: AAPL
+                  period:
+                    type: string
+                    example: 1d
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Candlestick'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /stock/batch:
+    post:
+      tags: [stock]
+      summary: Get multiple stock quotes (FR-010)
+      description: Retrieve quotes for multiple symbols in one request (for watchlist display)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbols]
+              properties:
+                symbols:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: string
+                  example: ["AAPL", "MSFT", "005930.KS"]
+      responses:
+        '200':
+          description: Batch quotes retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  quotes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockQuote'
+                  cached_count:
+                    type: integer
+                    example: 45
+                    description: Number of quotes served from cache
+                  fetched_count:
+                    type: integer
+                    example: 5
+                    description: Number of quotes fetched from yfinance
+
+  # ==================== Portfolio ====================
+  /portfolio:
+    get:
+      tags: [portfolio]
+      summary: Get all portfolios (FR-013)
+      description: Retrieve user's 3 predefined portfolios with holdings summary
+      responses:
+        '200':
+          description: Portfolios retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  portfolios:
+                    type: array
+                    minItems: 3
+                    maxItems: 3
+                    items:
+                      $ref: '#/components/schemas/Portfolio'
+
+  /portfolio/{portfolio_id}/holdings:
+    get:
+      tags: [portfolio]
+      summary: Get portfolio holdings (FR-014)
+      description: Retrieve all holdings in a portfolio with current values
+      parameters:
+        - name: portfolio_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Holdings retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  portfolio:
+                    $ref: '#/components/schemas/Portfolio'
+                  holdings:
+                    type: array
+                    maxItems: 100
+                    items:
+                      $ref: '#/components/schemas/Holding'
+                  summary:
+                    $ref: '#/components/schemas/PortfolioSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags: [portfolio]
+      summary: Add holding to portfolio (FR-015)
+      description: Add a new stock holding (max 100 per portfolio)
+      parameters:
+        - name: portfolio_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbol, quantity, avg_price]
+              properties:
+                symbol:
+                  type: string
+                  example: AAPL
+                quantity:
+                  type: number
+                  format: decimal
+                  minimum: 0.0001
+                  example: 10.5
+                  description: Number of shares (supports fractional)
+                avg_price:
+                  type: number
+                  format: decimal
+                  minimum: 0.01
+                  example: 150.25
+                  description: Average purchase price per share
+      responses:
+        '201':
+          description: Holding added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Holding'
+        '409':
+          description: Holding limit reached (100 items) or symbol already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Portfolio holding limit reached (100 items)"
+                code: "HOLDING_LIMIT"
+
+  /portfolio/{portfolio_id}/holdings/{holding_id}:
+    patch:
+      tags: [portfolio]
+      summary: Update holding (FR-016)
+      description: Update quantity or average price of an existing holding
+      parameters:
+        - name: portfolio_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: holding_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: number
+                  format: decimal
+                  minimum: 0.0001
+                  example: 15.0
+                avg_price:
+                  type: number
+                  format: decimal
+                  minimum: 0.01
+                  example: 155.50
+      responses:
+        '200':
+          description: Holding updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Holding'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [portfolio]
+      summary: Remove holding (FR-017)
+      description: Delete a holding from portfolio
+      parameters:
+        - name: portfolio_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: holding_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Holding removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /portfolio/{portfolio_id}/summary:
+    get:
+      tags: [portfolio]
+      summary: Get portfolio performance summary (FR-018)
+      description: Calculate portfolio total value, cost basis, profit/loss, return rate
+      parameters:
+        - name: portfolio_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Portfolio summary calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioSummary'
+
+  # ==================== Health Check ====================
+  /health:
+    get:
+      tags: [health]
+      summary: Health check endpoint
+      description: Check API and database connectivity
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2025-10-21T12:34:56Z"
+                  database:
+                    type: string
+                    example: connected
+                  cache_hit_rate:
+                    type: number
+                    format: float
+                    example: 0.85
+                    description: Stock quote cache hit rate
+
+# ==================== Components ====================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from /auth/login endpoint
+
+  schemas:
+    # ========== User Schemas ==========
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T10:00:00Z"
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-10-21T12:30:00Z"
+
+    # ========== Watchlist Schemas ==========
+    WatchlistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        symbol:
+          type: string
+          example: AAPL
+        display_order:
+          type: integer
+          example: 0
+        notes:
+          type: string
+          nullable: true
+          example: "애플 장기 보유"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T10:00:00Z"
+        quote:
+          $ref: '#/components/schemas/StockQuote'
+          description: Included when include_quotes=true
+
+    # ========== Stock Schemas ==========
+    StockQuote:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: AAPL
+        current_price:
+          type: number
+          format: decimal
+          example: 175.43
+        daily_change_pct:
+          type: number
+          format: decimal
+          example: 1.25
+          description: Daily percentage change
+        volume:
+          type: integer
+          example: 54321000
+        market_status:
+          type: string
+          enum: [open, closed]
+          example: closed
+        market:
+          type: string
+          enum: [KR, US]
+          example: US
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T12:30:00Z"
+          description: Cache timestamp
+        cache_age_seconds:
+          type: integer
+          example: 145
+          description: Seconds since last update (max 300 for 5-min cache)
+
+    Candlestick:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+          example: "2025-10-21T09:30:00Z"
+        open:
+          type: number
+          format: decimal
+          example: 174.50
+        high:
+          type: number
+          format: decimal
+          example: 176.20
+        low:
+          type: number
+          format: decimal
+          example: 173.80
+        close:
+          type: number
+          format: decimal
+          example: 175.43
+        adj_close:
+          type: number
+          format: decimal
+          nullable: true
+          example: 175.43
+        volume:
+          type: integer
+          example: 54321000
+
+    # ========== Portfolio Schemas ==========
+    Portfolio:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          enum: ["장기투자", "단타", "정찰병"]
+          example: "장기투자"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T12:30:00Z"
+        holdings_count:
+          type: integer
+          example: 12
+          description: Number of holdings in portfolio
+
+    Holding:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        portfolio_id:
+          type: integer
+          example: 1
+        symbol:
+          type: string
+          example: AAPL
+        quantity:
+          type: number
+          format: decimal
+          example: 10.5
+        avg_price:
+          type: number
+          format: decimal
+          example: 150.25
+        current_price:
+          type: number
+          format: decimal
+          example: 175.43
+          description: From stock_quotes cache
+        cost_basis:
+          type: number
+          format: decimal
+          example: 1577.63
+          description: Calculated: quantity * avg_price
+        current_value:
+          type: number
+          format: decimal
+          example: 1842.02
+          description: Calculated: quantity * current_price
+        profit_loss:
+          type: number
+          format: decimal
+          example: 264.39
+          description: Calculated: current_value - cost_basis
+        return_rate:
+          type: number
+          format: decimal
+          example: 16.76
+          description: Calculated: (profit_loss / cost_basis) * 100
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T12:30:00Z"
+
+    PortfolioSummary:
+      type: object
+      properties:
+        total_cost_basis:
+          type: number
+          format: decimal
+          example: 15000.00
+          description: Sum of all holdings' cost basis
+        total_current_value:
+          type: number
+          format: decimal
+          example: 17500.00
+          description: Sum of all holdings' current value
+        total_profit_loss:
+          type: number
+          format: decimal
+          example: 2500.00
+          description: total_current_value - total_cost_basis
+        total_return_rate:
+          type: number
+          format: decimal
+          example: 16.67
+          description: (total_profit_loss / total_cost_basis) * 100
+        holdings_count:
+          type: integer
+          example: 12
+        last_updated_at:
+          type: string
+          format: date-time
+          example: "2025-10-21T12:30:00Z"
+
+    # ========== Error Schemas ==========
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid request"
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        details:
+          type: object
+          nullable: true
+          description: Additional error context
+
+  # ========== Common Responses ==========
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Validation failed"
+            code: "VALIDATION_ERROR"
+            details:
+              email: "Invalid email format"
+
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Authentication required"
+            code: "UNAUTHORIZED"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"
+
+    RateLimitExceeded:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Rate limit exceeded"
+            code: "RATE_LIMIT"
+            details:
+              retry_after: 60

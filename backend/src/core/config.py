@@ -5,7 +5,7 @@ Loads environment variables and provides typed configuration settings.
 
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
-from typing import List, Union
+from typing import List, Union, Optional
 import secrets
 
 
@@ -29,17 +29,22 @@ class Settings(BaseSettings):
     DATABASE_POOL_RECYCLE: int = 3600
     
     # Security Settings
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    # Use JWT_SECRET env var if available, otherwise SECRET_KEY, otherwise generate random
+    SECRET_KEY: Optional[str] = None
+    JWT_SECRET: Optional[str] = None
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_HOURS: int = 24
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Prioritize JWT_SECRET over SECRET_KEY
+        if self.JWT_SECRET:
+            self.SECRET_KEY = self.JWT_SECRET
+        elif not self.SECRET_KEY:
+            self.SECRET_KEY = secrets.token_urlsafe(32)
+    
     # CORS Settings
-    CORS_ORIGINS: Union[List[str], str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ]
+    CORS_ORIGINS: Union[List[str], str] = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: List[str] = ["GET", "POST", "PUT", "DELETE", "PATCH"]
     CORS_HEADERS: List[str] = ["*"]
