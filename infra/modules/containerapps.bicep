@@ -166,8 +166,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         }
       ]
       scale: {
-        minReplicas: 0 // Scale to zero when idle (save costs)
-        maxReplicas: 10
+        minReplicas: 1 // Always keep 1 replica running (no cold start)
+        maxReplicas: 2 // Max 2 replicas for dev environment
         rules: [
           {
             name: 'http-scaling'
