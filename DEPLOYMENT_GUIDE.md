@@ -1,230 +1,111 @@
-# MyStock Azure 배포 가이드
+# Azure 배포 가이드
 
-## 현재 상태
-✅ MySQL Flexible Server 생성 완료
-⏳ App Service 생성 필요
-⏳ Static Web App 생성 필요
-⏳ 코드 배포 필요
+이 문서는 MyStock 애플리케이션을 Azure에 배포하는 전체 과정을 설명합니다.
 
----
+## 📋 목차
 
-## 1단계: 나머지 Azure 리소스 생성
-
-### App Service 생성
-```bash
-# App Service Plan 생성
-az appservice plan create \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-plan \
-    --location koreacentral \
-    --is-linux \
-    --sku B1
-
-# Web App 생성
-az webapp create \
-    --resource-group mystock-mvp-rg \
-    --plan mystock-mvp-plan \
-    --name mystock-mvp-api \
-    --runtime "PYTHON:3.11"
-
-# Always On 활성화
-az webapp config set \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-api \
-    --always-on true \
-    --http20-enabled true \
-    --min-tls-version 1.2
-```
-
-### 환경 변수 설정
-```bash
-# azure-credentials.txt에서 비밀번호 가져오기
-MYSQL_PASSWORD=$(grep "MySQL Admin Password:" azure-credentials.txt | awk '{print $4}')
-
-# 환경 변수 설정
-az webapp config appsettings set \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-api \
-    --settings \
-        DATABASE_URL="mysql+pymysql://mystockadmin:${MYSQL_PASSWORD}@mystock-mvp-mysql.mysql.database.azure.com:3306/mystockdb?ssl_ca=/etc/ssl/certs/ca-certificates.crt" \
-        JWT_SECRET="$(openssl rand -base64 32)" \
-        JWT_ALGORITHM="HS256" \
-        ACCESS_TOKEN_EXPIRE_MINUTES="1440" \
-        DEBUG="False" \
-        ENVIRONMENT="production" \
-        ALLOWED_ORIGINS="http://localhost:5173,https://*.azurestaticapps.net"
-```
+1. [사전 요구사항](#사전-요구사항)
+2. [아키텍처 개요](#아키텍처-개요)
+3. [비용 예측](#비용-예측)
+4. [초기 인프라 배포](#초기-인프라-배포)
+5. [GitHub Actions 설정](#github-actions-설정)
+6. [배포 확인](#배포-확인)
+7. [모니터링 및 로그](#모니터링-및-로그)
+8. [트러블슈팅](#트러블슈팅)
 
 ---
 
-## 2단계: Backend 배포
+## 사전 요구사항
 
-### 방법 A: ZIP 배포 (빠른 테스트)
+### 필수 도구
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (v2.50+)
+- [Git](https://git-scm.com/)
+- Azure 구독 (Owner 또는 Contributor 권한)
 
-```bash
-cd backend
-
-# 배포용 패키지 생성
-zip -r ../backend-deploy.zip . \
-    -x "*.pyc" \
-    -x "__pycache__/*" \
-    -x "venv/*" \
-    -x "tests/*" \
-    -x ".pytest_cache/*" \
-    -x "*.db"
-
-cd ..
-
-# Azure에 배포
-az webapp deploy \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-api \
-    --src-path backend-deploy.zip \
-    --type zip
-```
-
-### 방법 B: GitHub Actions (권장)
-
-1. **Dockerfile 생성** (backend/Dockerfile)
-2. **GitHub Secrets 설정**
-3. **GitHub Actions Workflow 생성**
+### API 키 준비
+- **Alpha Vantage API Key**: [무료 발급](https://www.alphavantage.co/support/#api-key)
+- **JWT Secret Key**: 자동 생성됨 (또는 직접 설정 가능)
 
 ---
 
-## 3단계: Database 마이그레이션
+## 아키텍처 개요
 
-```bash
-# Azure MySQL에 연결
-mysql -h mystock-mvp-mysql.mysql.database.azure.com \
-      -u mystockadmin \
-      -p \
-      mystockdb
-
-# 또는 Alembic으로 마이그레이션
-cd backend
-export DATABASE_URL="mysql+pymysql://mystockadmin:PASSWORD@mystock-mvp-mysql.mysql.database.azure.com:3306/mystockdb?ssl_ca=/etc/ssl/certs/ca-certificates.crt"
-alembic upgrade head
 ```
+┌─────────────────────────────────────────────────────────┐
+│ GitHub Repository                                        │
+│ ├─ frontend/ → GitHub Actions → Static Web App         │
+│ └─ backend/  → GitHub Actions → Container Apps         │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│ Azure Resources (Korea Central)                         │
+│                                                          │
+│ ┌─────────────────┐  ┌──────────────────┐              │
+│ │ Static Web App  │→ │ Container Apps   │              │
+│ │ (Free SKU)      │  │ (Consumption)    │              │
+│ └─────────────────┘  └──────────────────┘              │
+│          ↓                    ↓                         │
+│ ┌──────────────────────────────────────┐               │
+│ │ Cosmos DB (Serverless NoSQL)         │               │
+│ └──────────────────────────────────────┘               │
+│                                                          │
+│ ┌──────────────────────────────────────┐               │
+│ │ Log Analytics + App Insights         │               │
+│ └──────────────────────────────────────┘               │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 주요 리소스
+
+| 리소스 | SKU/Tier | 용도 | 예상 비용 |
+|--------|----------|------|-----------|
+| **Static Web App** | Free | 프론트엔드 호스팅 | $0 |
+| **Container Apps** | Consumption | 백엔드 API | ~$0-10/월 |
+| **Cosmos DB** | Serverless | NoSQL 데이터베이스 | ~$1-5/월 |
+| **Container Registry** | Basic | Docker 이미지 저장 | ~$5/월 |
+| **Log Analytics** | Pay-per-GB | 로그 수집 | ~$2-5/월 |
+| **Total** | - | - | **~$8-25/월** |
 
 ---
 
-## 4단계: Frontend 배포
+## 비용 예측
 
-### Static Web App 생성
-```bash
-# GitHub 저장소 URL 필요
-az staticwebapp create \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-frontend \
-    --location eastasia \
-    --source https://github.com/YOUR_USERNAME/my_stock \
-    --branch main \
-    --app-location "/frontend" \
-    --output-location "dist" \
-    --login-with-github
-```
+### 예상 월간 비용 (MVP 수준 트래픽 기준)
 
-### Frontend 환경 변수 설정
+**Static Web App (Free tier)**
+- 100 GB 대역폭/월
+- 커스텀 도메인 지원
+- **비용: $0**
 
-**frontend/.env.production** 파일 생성:
-```env
-VITE_API_BASE_URL=https://mystock-mvp-api.azurewebsites.net
-```
+**Container Apps (Consumption)**
+- 0.25 vCPU, 512 MB 메모리
+- Scale to Zero (사용하지 않을 때 과금 없음)
+- 월 1,000 요청 가정
+- **비용: ~$0-10/월**
 
----
+**Cosmos DB (Serverless)**
+- 1 GB 스토리지
+- 월 10,000 RU (Request Units)
+- **비용: ~$1-5/월**
 
-## 5단계: CORS 설정
+**Container Registry (Basic)**
+- 10 GB 스토리지
+- **비용: ~$5/월**
 
-```bash
-# Static Web App URL 가져오기
-STATIC_URL=$(az staticwebapp show \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-frontend \
-    --query defaultHostname -o tsv)
+**Log Analytics Workspace**
+- 1 GB 데이터 수집/월
+- 31일 보관
+- **비용: ~$2-5/월**
 
-# App Service CORS 업데이트
-az webapp config appsettings set \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-api \
-    --settings ALLOWED_ORIGINS="https://${STATIC_URL},http://localhost:5173"
-```
+**총 예상 비용: $8-25/월**
+
+> 💡 **비용 절감 팁**: 개발 환경에서는 Container Apps가 자동으로 scale to zero되어 사용하지 않을 때 과금이 없습니다.
 
 ---
 
-## 6단계: 배포 확인
+## 초기 인프라 배포
 
-### Health Check
-```bash
-curl https://mystock-mvp-api.azurewebsites.net/health
-```
-
-### 로그 확인
-```bash
-az webapp log tail \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-api
-```
-
-### Frontend 접속
-```
-https://YOUR_STATIC_APP.azurestaticapps.net
-```
-
----
-
-## 트러블슈팅
-
-### 1. App Service 시작 실패
-```bash
-# 로그 확인
-az webapp log tail --resource-group mystock-mvp-rg --name mystock-mvp-api
-
-# SSH 접속
-az webapp ssh --resource-group mystock-mvp-rg --name mystock-mvp-api
-```
-
-### 2. Database 연결 실패
-- MySQL 방화벽 규칙 확인
-- 연결 문자열 확인
-- SSL 인증서 경로 확인
-
-### 3. CORS 에러
-```bash
-# CORS 설정 확인
-az webapp config appsettings list \
-    --resource-group mystock-mvp-rg \
-    --name mystock-mvp-api \
-    --query "[?name=='ALLOWED_ORIGINS'].value" -o tsv
-```
-
----
-
-## 비용 모니터링
+### 1. Azure CLI 로그인
 
 ```bash
-# 리소스 그룹 비용 확인
-az consumption usage list \
-    --start-date $(date -u -d '30 days ago' '+%Y-%m-%d') \
-    --end-date $(date -u '+%Y-%m-%d') \
-    --query "[?contains(instanceName, 'mystock-mvp')]"
-```
-
----
-
-## 리소스 삭제 (필요시)
-
-```bash
-# 전체 리소스 그룹 삭제
-az group delete --name mystock-mvp-rg --yes --no-wait
-```
-
----
-
-## 다음 단계
-
-1. ✅ MySQL 서버 생성 완료
-2. ⏳ App Service 생성 및 배포
-3. ⏳ Database 마이그레이션
-4. ⏳ Static Web App 생성 및 배포
-5. ⏳ GitHub Actions CI/CD 설정
-6. ⏳ 모니터링 및 알람 설정
+az login
