@@ -6,8 +6,9 @@ Handles watchlist CRUD operations and reordering.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-import yfinance as yf
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from src.core.database import get_db
 from src.core.config import settings
@@ -20,14 +21,21 @@ from src.schemas.watchlist import (
     WatchlistItemResponse,
     WatchlistResponse,
 )
+from src.services.stock_data_service import StockDataService
 
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Create stock data service instance
+stock_service = StockDataService()
+
+# Thread pool for parallel API calls
+executor = ThreadPoolExecutor(max_workers=5)
+
 
 def get_stock_price(symbol: str):
-    """Get current stock price from yfinance.
+    """Get current stock price from Alpha Vantage.
     
     Args:
         symbol: Stock ticker symbol
@@ -37,79 +45,60 @@ def get_stock_price(symbol: str):
     """
     try:
         logger.info(f"[PRICE] Fetching price for symbol: {symbol}")
-        ticker = yf.Ticker(symbol)
-        info = ticker.info
+        quote_data = stock_service.get_quote(symbol)
         
-        logger.info(f"[PRICE] {symbol} - Info keys available: {list(info.keys())[:10]}...")
-        logger.info(f"[PRICE] {symbol} - currentPrice: {info.get('currentPrice')}")
-        logger.info(f"[PRICE] {symbol} - regularMarketPrice: {info.get('regularMarketPrice')}")
-        logger.info(f"[PRICE] {symbol} - previousClose: {info.get('previousClose')}")
+        if not quote_data:
+            logger.warning(f"[PRICE] No data returned for {symbol}")
+            return None
         
-        # Try different price fields in order of preference
-        price = (
-            info.get('currentPrice') or 
-            info.get('regularMarketPrice') or 
-            info.get('previousClose')
-        )
+        price = quote_data.get('current_price')
+        logger.info(f"[PRICE] {symbol} - Returning: {price}")
         
-        logger.info(f"[PRICE] {symbol} - Final price: {price}")
-        
-        result = float(price) if price else None
-        logger.info(f"[PRICE] {symbol} - Returning: {result}")
-        
-        return result
+        return price
     except Exception as e:
         logger.error(f"[PRICE] Error fetching price for {symbol}: {e}", exc_info=True)
         return None
 
 
 def get_stock_info(symbol: str):
-    """Get comprehensive stock information from yfinance.
+    """Get comprehensive stock information from Alpha Vantage.
     
     Args:
         symbol: Stock ticker symbol
         
     Returns:
-        Dictionary with price, change, percent, market cap, and company name, or None values if unavailable
+        Dictionary with price, change, percent, and company name (market cap excluded to reduce API calls)
     """
     try:
         logger.info(f"[INFO] Fetching info for symbol: {symbol}")
-        ticker = yf.Ticker(symbol)
-        info = ticker.info
+        quote_data = stock_service.get_quote(symbol)
         
-        # Get company name
-        company_name = (
-            info.get('longName') or 
-            info.get('shortName') or 
-            symbol
-        )
+        if not quote_data:
+            logger.warning(f"[INFO] No data returned for {symbol}")
+            return {
+                'current_price': None,
+                'price_change': None,
+                'change_percent': None,
+                'market_cap': None,
+                'company_name': symbol
+            }
         
-        # Get current price
-        current_price = (
-            info.get('currentPrice') or 
-            info.get('regularMarketPrice') or 
-            info.get('previousClose')
-        )
+        current_price = quote_data.get('current_price')
+        change_percent = quote_data.get('daily_change_pct')
         
-        # Get previous close for change calculation
-        previous_close = info.get('previousClose') or info.get('regularMarketPreviousClose')
-        
-        # Calculate change and percent
+        # Calculate price change from percentage and current price
         price_change = None
-        change_percent = None
-        if current_price and previous_close:
-            price_change = float(current_price) - float(previous_close)
-            change_percent = (price_change / float(previous_close)) * 100
-        
-        # Get market cap
-        market_cap = info.get('marketCap')
+        if current_price and change_percent:
+            # change_pct is already in percentage form
+            previous_close = current_price / (1 + change_percent / 100)
+            price_change = current_price - previous_close
         
         result = {
-            'current_price': float(current_price) if current_price else None,
+            'current_price': current_price,
             'price_change': price_change,
             'change_percent': change_percent,
-            'market_cap': market_cap,
-            'company_name': company_name
+            'market_cap': None,  # TODO: Cache in DB to reduce API calls
+            'company_name': symbol  # Using symbol for now, can be enhanced with DB cache
         }
         
         logger.info(f"[INFO] {symbol} - Result: {result}")
@@ -134,6 +123,7 @@ async def get_watchlist(
     """Get user's watchlist ordered by display_order.
     
     Returns all watchlist items sorted by display_order (0-49) with current prices.
+    Fetches stock info in parallel to reduce latency.
     
     Args:
         user_id: User ID from JWT token
@@ -146,13 +136,27 @@ async def get_watchlist(
         Watchlist.user_id == user_id
     ).order_by(Watchlist.display_order).all()
     
-    # Convert to response models and add stock info
-    items_with_info = []
-    for item in items:
+    if not items:
+        return WatchlistResponse(
+            items=[],
+            total=0,
+            max_items=settings.MAX_WATCHLIST_ITEMS
+        )
+    
+    # Fetch stock info in parallel using thread pool
+    loop = asyncio.get_event_loop()
+    
+    async def fetch_stock_info_async(item):
+        """Fetch stock info asynchronously in thread pool."""
+        stock_info = await loop.run_in_executor(executor, get_stock_info, item.symbol)
         item_dict = WatchlistItemResponse.model_validate(item).model_dump()
-        stock_info = get_stock_info(item.symbol)
         item_dict.update(stock_info)
-        items_with_info.append(WatchlistItemResponse(**item_dict))
+        return WatchlistItemResponse(**item_dict)
+    
+    # Fetch all stock info concurrently
+    items_with_info = await asyncio.gather(*[
+        fetch_stock_info_async(item) for item in items
+    ])
     
     return WatchlistResponse(
         items=items_with_info,

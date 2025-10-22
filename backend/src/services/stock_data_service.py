@@ -1,9 +1,10 @@
-"""Stock data service using yfinance API.
+"""Stock data service using Alpha Vantage API.
 
-Provides functions to fetch stock quotes and candlestick data from yfinance.
+Provides functions to fetch stock quotes and candlestick data from Alpha Vantage.
 """
 
-import yfinance as yf
+import requests
+import os
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 import logging
@@ -16,14 +17,58 @@ logger = logging.getLogger(__name__)
 
 
 class StockDataService:
-    """Service for fetching stock data from yfinance."""
+    """Service for fetching stock data from Alpha Vantage API."""
+    
+    BASE_URL = "https://www.alphavantage.co/query"
+    
+    def __init__(self):
+        """Initialize Alpha Vantage service with API key from environment."""
+        self.api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+        if not self.api_key:
+            logger.warning("ALPHA_VANTAGE_API_KEY not found in environment variables")
+        
+        # Check if delayed data should be used (default: true)
+        use_delayed_str = os.getenv("ALPHA_VANTAGE_USE_DELAYED", "true").lower()
+        self.use_delayed = use_delayed_str in ("true", "1", "yes")
+        
+        if self.use_delayed:
+            logger.info("Alpha Vantage: Using delayed data (15min delay, higher rate limit)")
+        else:
+            logger.info("Alpha Vantage: Using realtime data (lower rate limit)")
     
     @staticmethod
-    def get_quote(symbol: str) -> Optional[Dict[str, Any]]:
-        """Fetch current stock quote from yfinance.
+    def _convert_symbol(symbol: str) -> str:
+        """Convert Korean stock symbols to Alpha Vantage format.
+        
+        Korean stocks use .KS (KOSPI) or .KQ (KOSDAQ) suffixes.
+        Alpha Vantage might not support all Korean stocks.
+        """
+        # For now, return as-is. Alpha Vantage primarily supports US markets.
+        # Korean stocks may need special handling or alternative API
+        return symbol
+    
+    @staticmethod
+    def _determine_market_status() -> MarketStatus:
+        """Determine if US market is currently open.
+        
+        Simple heuristic: Check if current time is within market hours (9:30-16:00 ET).
+        For production, consider using market calendar API.
+        """
+        now = datetime.utcnow()
+        # Convert to ET (UTC-5 or UTC-4 during DST)
+        # This is a simplified check
+        hour = now.hour - 5  # Approximate ET time
+        
+        # Market hours: 9:30 AM - 4:00 PM ET (14:30 - 21:00 UTC during EST)
+        if 14 <= hour < 21:
+            return MarketStatus.OPEN
+        return MarketStatus.CLOSED
+    
+    def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Fetch current stock quote from Alpha Vantage.
         
         Args:
-            symbol: Stock ticker symbol (e.g., 'AAPL', '005930.KS')
+            symbol: Stock ticker symbol (e.g., 'AAPL', 'IBM')
             
         Returns:
             Dictionary with quote data or None if fetch fails
@@ -40,57 +85,135 @@ class StockDataService:
             }
         """
         try:
-            ticker = yf.Ticker(symbol)
-            info = ticker.info
+            converted_symbol = self._convert_symbol(symbol)
             
-            if not info or 'regularMarketPrice' not in info:
-                logger.warning(f"No data found for symbol: {symbol}")
+            params = {
+                "function": "GLOBAL_QUOTE",
+                "symbol": converted_symbol,
+                "apikey": self.api_key
+            }
+            
+            # Add entitlement parameter if using delayed data
+            if self.use_delayed:
+                params["entitlement"] = "delayed"
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for API errors
+            if "Error Message" in data:
+                logger.error(f"Alpha Vantage error for {symbol}: {data['Error Message']}")
+                return None
+            
+            if "Note" in data:
+                logger.warning(f"Alpha Vantage rate limit for {symbol}: {data['Note']}")
+                return None
+            
+            # Handle both realtime and delayed response keys
+            quote = None
+            if "Global Quote" in data:
+                quote = data["Global Quote"]
+            elif "Global Quote - DATA DELAYED BY 15 MINUTES" in data:
+                quote = data["Global Quote - DATA DELAYED BY 15 MINUTES"]
+            
+            if not quote:
+                logger.warning(f"No quote data found for symbol: {symbol}")
                 return None
             
             # Determine market (KR or US)
             market = Market.KR if symbol.endswith(('.KS', '.KQ')) else Market.US
             
             # Determine market status
-            market_state = info.get('marketState', 'CLOSED').upper()
-            market_status = MarketStatus.OPEN if market_state == 'REGULAR' else MarketStatus.CLOSED
+            market_status = self._determine_market_status()
             
-            # Calculate daily change percentage
-            regular_price = info.get('regularMarketPrice', 0)
-            previous_close = info.get('previousClose', regular_price)
-            daily_change = regular_price - previous_close
-            daily_change_pct = (daily_change / previous_close * 100) if previous_close else 0
+            # Parse quote data
+            current_price = float(quote.get("05. price", 0))
+            change_pct = float(quote.get("10. change percent", "0").replace("%", ""))
+            volume = int(quote.get("06. volume", 0))
+            previous_close = float(quote.get("08. previous close", current_price))
             
             return {
                 'symbol': symbol,
-                'current_price': regular_price,
-                'daily_change_pct': round(daily_change_pct, 4),
-                'volume': info.get('regularMarketVolume', 0),
+                'current_price': current_price,
+                'daily_change_pct': round(change_pct, 4),
+                'volume': volume,
                 'market_status': market_status,
                 'market': market,
                 'cache_data': {
-                    'regularMarketPrice': regular_price,
-                    'regularMarketChange': daily_change,
-                    'regularMarketChangePercent': daily_change_pct,
-                    'regularMarketVolume': info.get('regularMarketVolume', 0),
-                    'marketState': market_state,
+                    'regularMarketPrice': current_price,
+                    'regularMarketChangePercent': change_pct,
+                    'regularMarketVolume': volume,
                     'previousClose': previous_close,
-                    'marketCap': info.get('marketCap'),
-                    'currency': info.get('currency'),
-                    'shortName': info.get('shortName'),
-                    'longName': info.get('longName'),
+                    'open': quote.get("02. open"),
+                    'high': quote.get("03. high"),
+                    'low': quote.get("04. low"),
+                    'latestTradingDay': quote.get("07. latest trading day"),
                 }
             }
             
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching quote for {symbol}: {str(e)}")
+            return None
         except Exception as e:
             logger.error(f"Error fetching quote for {symbol}: {str(e)}")
             return None
     
     @staticmethod
+    def _get_function_and_interval(period: Period) -> tuple[str, Optional[str]]:
+        """Map Period enum to Alpha Vantage function and interval.
+        
+        Returns:
+            Tuple of (function_name, interval) for Alpha Vantage API
+        """
+        mapping = {
+            Period.THIRTY_MIN: ("TIME_SERIES_INTRADAY", "30min"),
+            Period.ONE_HOUR: ("TIME_SERIES_INTRADAY", "60min"),
+            Period.ONE_DAY: ("TIME_SERIES_DAILY", None),
+            Period.ONE_WEEK: ("TIME_SERIES_WEEKLY", None),
+            Period.ONE_MONTH: ("TIME_SERIES_MONTHLY", None),
+        }
+        return mapping.get(period, ("TIME_SERIES_DAILY", None))
+    
+    @staticmethod
+    def _get_time_series_key(function: str, interval: Optional[str] = None) -> str:
+        """Get the time series key name from API response.
+        
+        Args:
+            function: Alpha Vantage function name
+            interval: Interval for intraday data
+            
+        Returns:
+            Key name for accessing time series data in response
+        """
+        if function == "TIME_SERIES_INTRADAY":
+            return f"Time Series ({interval})"
+        elif function == "TIME_SERIES_DAILY":
+            return "Time Series (Daily)"
+        elif function == "TIME_SERIES_WEEKLY":
+            return "Weekly Time Series"
+        elif function == "TIME_SERIES_MONTHLY":
+            return "Monthly Time Series"
+        return "Time Series (Daily)"
+    
+    @staticmethod
+    def _get_max_points(period: Period) -> int:
+        """Get maximum number of data points to return based on period."""
+        limits = {
+            Period.THIRTY_MIN: 100,
+            Period.ONE_HOUR: 100,
+            Period.ONE_DAY: 100,
+            Period.ONE_WEEK: 52,
+            Period.ONE_MONTH: 24,
+        }
+        return limits.get(period, 100)
+    
     def get_candlestick_data(
+        self, 
         symbol: str, 
         period: Period
     ) -> Optional[List[Dict[str, Any]]]:
-        """Fetch candlestick (OHLCV) data from yfinance.
+        """Fetch candlestick (OHLCV) data from Alpha Vantage.
         
         Args:
             symbol: Stock ticker symbol
@@ -114,45 +237,89 @@ class StockDataService:
             ]
         """
         try:
-            # Get period mapping
-            period_map = CandlestickData.get_period_mapping()
-            if period not in period_map:
-                logger.error(f"Invalid period: {period}")
+            converted_symbol = self._convert_symbol(symbol)
+            function, interval = self._get_function_and_interval(period)
+            
+            params = {
+                "function": function,
+                "symbol": converted_symbol,
+                "apikey": self.api_key
+            }
+            
+            # Add interval for intraday data
+            if interval:
+                params["interval"] = interval
+            
+            # For intraday, request full outputsize
+            if function == "TIME_SERIES_INTRADAY":
+                params["outputsize"] = "full"
+            
+            # Add entitlement parameter if using delayed data
+            if self.use_delayed:
+                params["entitlement"] = "delayed"
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for API errors
+            if "Error Message" in data:
+                logger.error(f"Alpha Vantage error for {symbol}: {data['Error Message']}")
                 return None
             
-            yf_period, yf_interval = period_map[period]
+            if "Note" in data:
+                logger.warning(f"Alpha Vantage rate limit for {symbol}: {data['Note']}")
+                return None
             
-            # Fetch data
-            ticker = yf.Ticker(symbol)
-            hist = ticker.history(period=yf_period, interval=yf_interval)
+            # Get time series data
+            time_series_key = self._get_time_series_key(function, interval)
             
-            if hist.empty:
+            if time_series_key not in data:
                 logger.warning(f"No candlestick data found for {symbol} with period {period.value}")
                 return None
             
-            # Convert DataFrame to list of dictionaries
+            time_series = data[time_series_key]
+            
+            # Convert to list of dictionaries
             candlesticks = []
-            for index, row in hist.iterrows():
-                candlesticks.append({
-                    'date': index.to_pydatetime() if hasattr(index, 'to_pydatetime') else index,  # type: ignore
-                    'open': float(row['Open']),
-                    'high': float(row['High']),
-                    'low': float(row['Low']),
-                    'close': float(row['Close']),
-                    'adj_close': float(row['Close']),  # yfinance returns adjusted close
-                    'volume': int(row['Volume'])
-                })
+            max_points = self._get_max_points(period)
+            
+            for date_str, values in list(time_series.items())[:max_points]:
+                try:
+                    # Parse date string (format: "2024-01-20" or "2024-01-20 10:00:00")
+                    if " " in date_str:
+                        date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                    else:
+                        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                    
+                    candlesticks.append({
+                        'date': date_obj,
+                        'open': float(values.get('1. open', 0)),
+                        'high': float(values.get('2. high', 0)),
+                        'low': float(values.get('3. low', 0)),
+                        'close': float(values.get('4. close', 0)),
+                        'adj_close': float(values.get('4. close', 0)),  # Alpha Vantage adjusted close same as close
+                        'volume': int(values.get('5. volume', 0))
+                    })
+                except (ValueError, KeyError) as e:
+                    logger.warning(f"Failed to parse candlestick data for {date_str}: {e}")
+                    continue
+            
+            # Sort by date ascending (oldest first)
+            candlesticks.sort(key=lambda x: x['date'])
             
             logger.info(f"Fetched {len(candlesticks)} candlesticks for {symbol} ({period.value})")
             return candlesticks
             
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching candlestick data for {symbol}: {str(e)}")
+            return None
         except Exception as e:
             logger.error(f"Error fetching candlestick data for {symbol}: {str(e)}")
             return None
     
-    @staticmethod
-    def validate_symbol(symbol: str) -> bool:
-        """Validate if a symbol exists in yfinance.
+    def validate_symbol(self, symbol: str) -> bool:
+        """Validate if a symbol exists in Alpha Vantage.
         
         Args:
             symbol: Stock ticker symbol
@@ -161,24 +328,81 @@ class StockDataService:
             True if symbol exists, False otherwise
         """
         try:
-            ticker = yf.Ticker(symbol)
-            info = ticker.info
+            # Use SYMBOL_SEARCH to validate
+            params = {
+                "function": "SYMBOL_SEARCH",
+                "keywords": symbol,
+                "apikey": self.api_key
+            }
             
-            # Check if we got valid data
-            return bool(info and 'regularMarketPrice' in info)
+            # Add entitlement parameter if using delayed data
+            if self.use_delayed:
+                params["entitlement"] = "delayed"
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if "bestMatches" in data and data["bestMatches"]:
+                # Check if exact symbol match exists
+                for match in data["bestMatches"]:
+                    if match.get("1. symbol", "").upper() == symbol.upper():
+                        return True
+            
+            return False
             
         except Exception as e:
             logger.error(f"Error validating symbol {symbol}: {str(e)}")
             return False
     
-    @staticmethod
-    def get_news(symbol: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Fetch recent news articles for a stock from yfinance.
-        
-        Uses yfinance API directly without any database caching.
+    def search_symbol(self, keywords: str) -> List[Dict[str, Any]]:
+        """Search for stock symbols matching keywords.
         
         Args:
-            symbol: Stock ticker symbol (e.g., 'AAPL', 'NVDA')
+            keywords: Search keywords (company name or symbol)
+            
+        Returns:
+            List of matching symbols with company info
+        """
+        try:
+            params = {
+                "function": "SYMBOL_SEARCH",
+                "keywords": keywords,
+                "apikey": self.api_key
+            }
+            
+            # Add entitlement parameter if using delayed data
+            if self.use_delayed:
+                params["entitlement"] = "delayed"
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if "bestMatches" not in data:
+                return []
+            
+            results = []
+            for match in data["bestMatches"]:
+                results.append({
+                    'symbol': match.get("1. symbol", ""),
+                    'name': match.get("2. name", ""),
+                    'type': match.get("3. type", ""),
+                    'region': match.get("4. region", ""),
+                    'currency': match.get("8. currency", ""),
+                })
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error searching symbols for '{keywords}': {str(e)}")
+            return []
+    
+    def get_news(self, symbol: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Fetch recent news articles for a stock from Alpha Vantage.
+        
+        Args:
+            symbol: Stock ticker symbol (e.g., 'AAPL', 'IBM')
             limit: Maximum number of news articles to return (default 10)
             
         Returns:
@@ -200,68 +424,89 @@ class StockDataService:
         try:
             logger.info(f"Fetching {limit} news articles for symbol: {symbol}")
             
-            # Create ticker object
-            ticker = yf.Ticker(symbol)
+            converted_symbol = self._convert_symbol(symbol)
             
-            # Fetch news using .news property (yfinance 0.2.x)
-            news_data = ticker.news
+            params = {
+                "function": "NEWS_SENTIMENT",
+                "tickers": converted_symbol,
+                "limit": min(limit, 50),  # Alpha Vantage max is 50
+                "apikey": self.api_key
+            }
             
-            if not news_data or len(news_data) == 0:
+            # Add entitlement parameter if using delayed data
+            if self.use_delayed:
+                params["entitlement"] = "delayed"
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for API errors
+            if "Error Message" in data:
+                logger.error(f"Alpha Vantage error for {symbol}: {data['Error Message']}")
+                return []
+            
+            if "Note" in data:
+                logger.warning(f"Alpha Vantage rate limit for {symbol}: {data['Note']}")
+                return []
+            
+            if "feed" not in data or not data["feed"]:
                 logger.warning(f"No news found for symbol: {symbol}")
                 return []
             
-            logger.info(f"Retrieved {len(news_data)} news items from yfinance for {symbol}")
+            logger.info(f"Retrieved {len(data['feed'])} news items from Alpha Vantage for {symbol}")
             
             # Convert news data to structured format
             news_items = []
-            for idx, item in enumerate(news_data):  # Process all available items
+            for idx, item in enumerate(data["feed"]):
                 try:
-                    # yfinance news structure: data is nested in 'content' object
-                    content = item.get('content', {})
-                    provider = content.get('provider', {})
-                    canonical_url = content.get('canonicalUrl', {})
-                    thumbnail = content.get('thumbnail', {})
-                    
-                    # Extract fields from the nested structure
-                    title = content.get('title', '')
-                    summary = content.get('summary', '')
-                    publisher = provider.get('displayName', '')
-                    link = canonical_url.get('url', '')
-                    
-                    # Get thumbnail URL
-                    thumbnail_url = None
-                    if thumbnail and 'originalUrl' in thumbnail:
-                        thumbnail_url = thumbnail.get('originalUrl')
-                    
-                    # Get publication date from content.pubDate or displayTime (ISO format string)
-                    pub_date_str = content.get('pubDate') or content.get('displayTime', '')
+                    title = item.get('title', '')
+                    summary = item.get('summary', '')
+                    source = item.get('source', 'Unknown')
+                    url = item.get('url', '#')
+                    banner_image = item.get('banner_image')
+                    time_published = item.get('time_published', '')
                     
                     # Skip if title is missing
                     if not title:
                         logger.warning(f"Skipping news item {idx}: missing title")
                         continue
                     
-                    # Handle timestamp conversion
+                    # Parse timestamp: Alpha Vantage format "20250120T011450"
                     published_at = None
-                    if pub_date_str:
+                    if time_published:
                         try:
-                            # Parse ISO 8601 format: '2025-10-20T01:14:50Z'
-                            published_at = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                            published_at = datetime.strptime(time_published, "%Y%m%dT%H%M%S")
                         except (ValueError, TypeError) as e:
-                            logger.warning(f"Failed to parse timestamp '{pub_date_str}' for news item {idx}: {e}")
+                            logger.warning(f"Failed to parse timestamp '{time_published}': {e}")
+                            published_at = datetime.now()
+                    else:
+                        published_at = datetime.now()
+                    
+                    # Extract sentiment for the specific ticker
+                    sentiment_score = None
+                    sentiment_label = None
+                    if 'ticker_sentiment' in item:
+                        for sentiment in item['ticker_sentiment']:
+                            if sentiment.get('ticker', '').upper() == symbol.upper():
+                                sentiment_score = sentiment.get('ticker_sentiment_score')
+                                sentiment_label = sentiment.get('ticker_sentiment_label')
+                                break
                     
                     news_item = {
                         'title': title,
                         'summary': summary if summary else '',
-                        'publisher': publisher if publisher else 'Unknown',
-                        'link': link if link else '#',
-                        'thumbnail_url': thumbnail_url,
-                        'published_at': published_at if published_at else datetime.now()
+                        'publisher': source,
+                        'link': url,
+                        'thumbnail_url': banner_image,
+                        'published_at': published_at,
+                        'sentiment_score': sentiment_score,
+                        'sentiment_label': sentiment_label,
                     }
                     news_items.append(news_item)
                     
                 except Exception as item_error:
-                    logger.error(f"Failed to process news item {idx} for {symbol}: {item_error}", exc_info=True)
+                    logger.error(f"Failed to process news item {idx} for {symbol}: {item_error}")
                     continue
             
             # Sort by published_at in descending order (newest first)
@@ -273,6 +518,78 @@ class StockDataService:
             logger.info(f"Successfully processed {len(news_items)} news articles for {symbol}")
             return news_items
             
-        except Exception as e:
-            logger.error(f"Error fetching news for {symbol}: {str(e)}", exc_info=True)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching news for {symbol}: {str(e)}")
             return []
+        except Exception as e:
+            logger.error(f"Error fetching news for {symbol}: {str(e)}")
+            return []
+    
+    def get_company_overview(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Fetch company overview including market cap from Alpha Vantage.
+        
+        Args:
+            symbol: Stock ticker symbol (e.g., 'AAPL', 'IBM')
+            
+        Returns:
+            Dictionary with company information including market cap, or None if fetch fails
+        """
+        try:
+            logger.info(f"Fetching company overview for symbol: {symbol}")
+            
+            converted_symbol = self._convert_symbol(symbol)
+            
+            params = {
+                "function": "OVERVIEW",
+                "symbol": converted_symbol,
+                "apikey": self.api_key
+            }
+            
+            # Add entitlement parameter if using delayed data
+            if self.use_delayed:
+                params["entitlement"] = "delayed"
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for API errors
+            if "Error Message" in data:
+                logger.error(f"Alpha Vantage error for {symbol}: {data['Error Message']}")
+                return None
+            
+            if "Note" in data:
+                logger.warning(f"Alpha Vantage rate limit for {symbol}: {data['Note']}")
+                return None
+            
+            if not data or "Symbol" not in data:
+                logger.warning(f"No company overview data found for symbol: {symbol}")
+                return None
+            
+            # Extract relevant information
+            market_cap_str = data.get("MarketCapitalization", "0")
+            try:
+                market_cap = int(market_cap_str) if market_cap_str and market_cap_str != "None" else None
+            except (ValueError, TypeError):
+                market_cap = None
+            
+            return {
+                'symbol': data.get("Symbol"),
+                'name': data.get("Name"),
+                'description': data.get("Description"),
+                'sector': data.get("Sector"),
+                'industry': data.get("Industry"),
+                'market_cap': market_cap,
+                'pe_ratio': data.get("PERatio"),
+                'dividend_yield': data.get("DividendYield"),
+                'eps': data.get("EPS"),
+                '52_week_high': data.get("52WeekHigh"),
+                '52_week_low': data.get("52WeekLow"),
+            }
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching company overview for {symbol}: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching company overview for {symbol}: {str(e)}")
+            return None

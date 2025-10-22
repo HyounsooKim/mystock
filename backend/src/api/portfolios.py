@@ -14,6 +14,8 @@ from sqlalchemy import func
 from decimal import Decimal
 from datetime import datetime
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from src.core.database import get_db
 from src.core.middleware import get_current_user_id
@@ -30,6 +32,9 @@ from src.api.watchlist import get_stock_price, get_stock_info
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Thread pool for parallel API calls
+executor = ThreadPoolExecutor(max_workers=5)
 
 
 @router.get("", response_model=list[PortfolioResponse])
@@ -138,7 +143,7 @@ def get_portfolio(
 
 
 @router.get("/{portfolio_id}/summary", response_model=PortfolioSummaryResponse)
-def get_portfolio_summary(
+async def get_portfolio_summary(
     portfolio_id: int,
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
@@ -151,6 +156,8 @@ def get_portfolio_summary(
     - profit_loss = current_value - cost_basis
     - return_rate = (profit_loss / cost_basis) * 100
     
+    Fetches stock prices in parallel to reduce latency.
+    
     Args:
         portfolio_id: Portfolio ID
         user_id: Current user ID from JWT token
@@ -161,33 +168,6 @@ def get_portfolio_summary(
         
     Raises:
         HTTPException 404: Portfolio not found or not owned by user
-        
-    Example:
-        GET /api/v1/portfolios/1/summary
-        Response: {
-            "portfolio": {...},
-            "holdings": [
-                {
-                    "id": 1,
-                    "symbol": "AAPL",
-                    "quantity": 10,
-                    "avg_price": 175.50,
-                    "cost_basis": 1755.00,
-                    "current_price": 180.00,
-                    "current_value": 1800.00,
-                    "profit_loss": 45.00,
-                    "return_rate": 2.56,
-                    ...
-                }
-            ],
-            "summary": {
-                "total_holdings": 5,
-                "total_cost_basis": 8750.00,
-                "total_current_value": 9100.00,
-                "total_profit_loss": 350.00,
-                "total_return_rate": 4.00
-            }
-        }
     """
     # Verify portfolio ownership
     portfolio = (
@@ -209,7 +189,40 @@ def get_portfolio_summary(
         .all()
     )
     
-    # Calculate P&L for each holding using real-time prices
+    if not holdings:
+        return PortfolioSummaryResponse(
+            portfolio=PortfolioResponse.model_validate(portfolio),
+            holdings=[],
+            summary=PortfolioSummary(
+                total_holdings=0,
+                total_cost_basis=Decimal(0),
+                total_current_value=Decimal(0),
+                total_profit_loss=Decimal(0),
+                total_return_rate=Decimal(0),
+                usd_cost_basis=Decimal(0),
+                usd_current_value=Decimal(0),
+                usd_profit_loss=Decimal(0),
+                usd_return_rate=Decimal(0),
+                krw_cost_basis=Decimal(0),
+                krw_current_value=Decimal(0),
+                krw_profit_loss=Decimal(0),
+                krw_return_rate=Decimal(0),
+            )
+        )
+    
+    # Fetch all stock info in parallel
+    loop = asyncio.get_event_loop()
+    symbols = [holding.symbol for holding in holdings]
+    
+    stock_infos = await asyncio.gather(*[
+        loop.run_in_executor(executor, get_stock_info, symbol)
+        for symbol in symbols
+    ])
+    
+    # Create a mapping of symbol to stock info
+    symbol_to_info = dict(zip(symbols, stock_infos))
+    
+    # Calculate P&L for each holding using fetched prices
     holdings_response = []
     total_cost_basis = Decimal(0)
     total_current_value = Decimal(0)
@@ -227,9 +240,8 @@ def get_portfolio_summary(
         # Check if US stock (no dot in symbol)
         is_us_stock = '.' not in holding.symbol
         
-        # Get real-time price and company info from yfinance
-        logger.info(f"[PORTFOLIO] Fetching info for {holding.symbol}")
-        stock_info = get_stock_info(holding.symbol)
+        # Get stock info from pre-fetched data
+        stock_info = symbol_to_info.get(holding.symbol, {})
         current_price = stock_info.get('current_price')
         company_name = stock_info.get('company_name', holding.symbol)
         

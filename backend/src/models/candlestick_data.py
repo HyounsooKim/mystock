@@ -11,6 +11,7 @@ import enum
 
 class Period(str, enum.Enum):
     """Enum for candlestick data period/interval."""
+    THIRTY_MIN = "30m"  # 30-minute interval
     FIVE_MIN = "5m"     # 5-minute interval, 1-day period
     ONE_HOUR = "1h"     # 1-hour interval, 30-day period
     ONE_DAY = "1d"      # 1-day interval, 3-month period

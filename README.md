@@ -98,7 +98,7 @@ cd backend
 # 1. Python 가상환경 생성
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
+a
 # 2. 의존성 설치
 pip install -r requirements.txt
 
@@ -108,12 +108,11 @@ cp .env.example .env
 # DATABASE_URL=mysql+pymysql://mystockuser:mystockpass123@localhost:3306/mystockdb
 
 # 4. 데이터베이스 스키마 생성 (Alembic 마이그레이션)
-cd src
 alembic upgrade head
 
 # 5. MySQL 접속 테스트
 # 백엔드에서 DB 연결 확인
-python -c "from db.session import engine; engine.connect(); print('✅ MySQL 연결 성공')"
+python -c "from src.core.database import engine; engine.connect(); print('✅ MySQL 연결 성공')"
 
 # 6. 테스트 데이터 생성 (선택사항)
 # python -m db.seed

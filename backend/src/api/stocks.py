@@ -26,6 +26,9 @@ from src.services.stock_data_service import StockDataService
 
 router = APIRouter()
 
+# Create a singleton instance of StockDataService
+stock_service = StockDataService()
+
 
 @router.get("/{symbol}", response_model=StockQuoteResponse)
 async def get_stock_quote(
@@ -67,8 +70,8 @@ async def get_stock_quote(
             updated_at=cached_quote.updated_at  # type: ignore
         )
     
-    # Cache miss - fetch from yfinance
-    quote_data = StockDataService.get_quote(symbol)
+    # Cache miss - fetch from Alpha Vantage
+    quote_data = stock_service.get_quote(symbol)
     
     if not quote_data:
         raise HTTPException(
@@ -122,7 +125,7 @@ async def get_chart_data(
 ):
     """Get candlestick chart data for a stock.
     
-    Fetches OHLCV (Open, High, Low, Close, Volume) data directly from yfinance.
+    Fetches OHLCV (Open, High, Low, Close, Volume) data directly from Alpha Vantage.
     No database caching is used - always fetches fresh data.
     
     Args:
@@ -147,8 +150,8 @@ async def get_chart_data(
     }
     db_period = period_map[period]
     
-    # Fetch directly from yfinance (no caching)
-    candle_data = StockDataService.get_candlestick_data(symbol, db_period)
+    # Fetch directly from Alpha Vantage (no caching)
+    candle_data = stock_service.get_candlestick_data(symbol, db_period)
     
     if not candle_data:
         raise HTTPException(
@@ -184,11 +187,11 @@ async def get_stock_news(
 ):
     """Get news articles for a stock symbol.
     
-    Fetches recent news articles directly from yfinance API.
+    Fetches recent news articles directly from Alpha Vantage API.
     No database caching is used for news data.
     
     Args:
-        symbol: Stock ticker symbol (e.g., 'AAPL', 'NVDA')
+        symbol: Stock ticker symbol (e.g., 'AAPL', 'IBM')
         limit: Number of articles to return (default: 10, max: 100)
         
     Returns:
@@ -197,8 +200,8 @@ async def get_stock_news(
     """
     symbol = symbol.upper()
     
-    # Fetch news directly from yfinance via StockDataService (no DB involved)
-    news_data = StockDataService.get_news(symbol, limit=limit)
+    # Fetch news directly from Alpha Vantage via StockDataService (no DB involved)
+    news_data = stock_service.get_news(symbol, limit=limit)
     
     # news_data is always a list (empty list if no news)
     if news_data is None or len(news_data) == 0:

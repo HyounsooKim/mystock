@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     STOCK_API_TIMEOUT_SECONDS: int = 10
     STOCK_API_MAX_RETRIES: int = 3
     
+    # Alpha Vantage API Settings
+    ALPHA_VANTAGE_API_KEY: Optional[str] = None
+    ALPHA_VANTAGE_USE_DELAYED: bool = True  # Default to delayed mode (15min delay, higher rate limit)
+    
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     
