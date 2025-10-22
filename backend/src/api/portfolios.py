@@ -578,32 +578,37 @@ async def update_holding(
         # Calculate P&L for response
         stock_info = get_stock_info(holding["symbol"])
         current_price = stock_info.get("current_price")
+        company_name = stock_info.get("company_name")
         quantity = Decimal(str(request.quantity))
         avg_price = Decimal(str(request.avg_price))
-        invested_amount = quantity * avg_price
+        cost_basis = quantity * avg_price
         
         if current_price:
             current_price_decimal = Decimal(str(current_price))
-            market_value = quantity * current_price_decimal
-            profit_loss = market_value - invested_amount
-            profit_loss_pct = (profit_loss / invested_amount * 100) if invested_amount > 0 else Decimal(0)
+            current_value = quantity * current_price_decimal
+            profit_loss = current_value - cost_basis
+            return_rate = (profit_loss / cost_basis * 100) if cost_basis > 0 else Decimal(0)
         else:
-            market_value = invested_amount
+            current_price_decimal = None
+            current_value = cost_basis
             profit_loss = Decimal(0)
-            profit_loss_pct = Decimal(0)
+            return_rate = Decimal(0)
         
         return HoldingResponse(
             id=holding_id,
             portfolio_id=portfolio_id,
             symbol=holding["symbol"],
+            company_name=company_name,
             quantity=request.quantity,
-            avg_price=request.avg_price,
-            purchase_date=holding.get("purchase_date"),
-            current_price=current_price,
-            market_value=float(market_value),
-            invested_amount=float(invested_amount),
-            profit_loss=float(profit_loss),
-            profit_loss_pct=float(profit_loss_pct)
+            avg_price=avg_price,
+            cost_basis=cost_basis,
+            current_price=current_price_decimal,
+            current_value=current_value,
+            profit_loss=profit_loss,
+            return_rate=return_rate,
+            notes=holding.get("notes"),
+            created_at=datetime.fromisoformat(holding["purchase_date"]) if isinstance(holding["purchase_date"], str) else holding["purchase_date"],
+            updated_at=datetime.now()
         )
         
     except HTTPException:
