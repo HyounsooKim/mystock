@@ -9,9 +9,11 @@
 **Phase 2 Tasks**: [tasks.md](./tasks.md) ✅ (19 tasks: 2 infra, 5 backend, 5 frontend, 2 testing, 1 deploy, 4 docs)  
 **Agent Context**: Updated via `.specify/scripts/bash/update-agent-context.sh copilot` ✅
 
-## Summary
+## Overview
 
-개인화된 주식 포트폴리오 앱으로, 사용자가 한국(KOSPI/KOSDAQ)과 미국(NYSE/NASDAQ) 주식을 워치리스트에 추가하고, 실시간 시세를 조회하며, 3개의 미리 정의된 포트폴리오("장기투자", "단타", "정찰병")에서 보유 종목을 관리할 수 있습니다. yfinance API를 통해 시세 데이터를 수집하고 5분간 캐싱하여 API 호출을 최소화합니다. Azure 클라우드 인프라를 100% 활용하며, Vue3 프론트엔드는 Blob Storage에 정적 배포하고, FastAPI 백엔드는 Container Apps에 배포하며, Azure MySQL을 사용합니다.
+개인화된 주식 포트폴리오 앱으로, 사용자가 한국(KOSPI/KOSDAQ)과 미국(NYSE/NASDAQ) 주식을 워치리스트에 추가하고, 실시간 시세를 조회하며, 3개의 미리 정의된 포트폴리오("장기투자", "단기투자", "정찰병")에서 보유 종목을 관리할 수 있습니다. yfinance API를 통해 시세 데이터를 수집하고 5분간 캐싱하여 API 호출을 최소화합니다. Azure 클라우드 인프라를 100% 활용하며, Vue3 프론트엔드는 Blob Storage에 정적 배포하고, FastAPI 백엔드는 Container Apps에 배포하며, Azure MySQL을 사용합니다.
+
+## Technology Choices
 
 ## Technical Context
 

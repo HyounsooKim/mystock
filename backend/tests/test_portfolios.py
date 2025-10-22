@@ -25,7 +25,7 @@ class TestListPortfolios:
         data = response.json()
         
         assert len(data) == 3
-        assert {p["name"] for p in data} == {"장기투자", "단타", "정찰병"}
+        assert {p["name"] for p in data} == {"장기투자", "단기투자", "정찰병"}
         
         # Check holdings_count
         for portfolio in data:
@@ -81,7 +81,7 @@ class TestGetPortfolio:
         data = response.json()
         
         assert data["id"] == portfolio_id
-        assert data["name"] in ["장기투자", "단타", "정찰병"]
+        assert data["name"] in ["장기투자", "단기투자", "정찰병"]
     
     def test_get_portfolio_not_found(self, client: TestClient, auth_headers: dict):
         """Test getting non-existent portfolio."""

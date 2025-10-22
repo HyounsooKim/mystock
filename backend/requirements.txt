@@ -4,10 +4,7 @@ uvicorn[standard]==0.24.0
 gunicorn==21.2.0
 pydantic-settings==2.1.0
 
-# Database
-# sqlalchemy==2.0.23  # Replaced with Cosmos DB
-# pymysql==1.1.0  # Replaced with Cosmos DB
-# alembic==1.12.1  # Not needed for NoSQL
+# Database - Cosmos DB
 azure-cosmos==4.5.1
 
 # Authentication & Security
@@ -16,8 +13,7 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.6
 
-# Stock Data
-# yfinance==0.2.31  # Replaced with Alpha Vantage
+# Stock Data - Alpha Vantage
 requests==2.31.0
 
 # Configuration

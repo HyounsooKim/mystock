@@ -8,7 +8,7 @@ info:
     - User authentication (email/password)
     - Watchlist management (up to 50 items)
     - Real-time stock quotes with 5-minute cache
-    - Three predefined portfolios ("장기투자", "단타", "정찰병")
+    - Three predefined portfolios ("장기투자", "단기투자", "정찰병")
     - Historical candlestick data (5 period options)
     
     **Performance Targets**:
@@ -756,7 +756,7 @@ components:
           example: 1
         name:
           type: string
-          enum: ["장기투자", "단타", "정찰병"]
+          enum: ["장기투자", "단기투자", "정찰병"]
           example: "장기투자"
         created_at:
           type: string

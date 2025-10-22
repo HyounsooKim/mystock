@@ -171,13 +171,13 @@ INSERT INTO watchlists (user_id, symbol, display_order, notes) VALUES
 
 ### 3. portfolios
 
-**Purpose**: Three predefined portfolio types per user ("장기투자", "단타", "정찰병")
+**Purpose**: Three predefined portfolio types per user ("장기투자", "단기투자", "정찰병")
 
 ```sql
 CREATE TABLE portfolios (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    name VARCHAR(50) NOT NULL COMMENT 'Portfolio name (장기투자, 단타, 정찰병)',
+    name VARCHAR(50) NOT NULL COMMENT 'Portfolio name (장기투자, 단기투자, 정찰병)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -191,14 +191,14 @@ COMMENT='Three predefined portfolios per user';
 **Fields**:
 - `id`: Primary key
 - `user_id`: Foreign key to users table
-- `name`: Portfolio name (must be one of: "장기투자", "단타", "정찰병")
+- `name`: Portfolio name (must be one of: "장기투자", "단기투자", "정찰병")
 - `created_at`: Portfolio creation timestamp
 - `updated_at`: Last modification timestamp
 
 **Constraints**:
 - `user_id` + `name` unique constraint
 - Exactly 3 portfolios per user (enforced in application layer)
-- Allowed names: "장기투자", "단타", "정찰병" (enum validation in application)
+- Allowed names: "장기투자", "단기투자", "정찰병" (enum validation in application)
 
 **Initialization**:
 ```sql
@@ -210,7 +210,7 @@ FOR EACH ROW
 BEGIN
     INSERT INTO portfolios (user_id, name) VALUES
     (NEW.id, '장기투자'),
-    (NEW.id, '단타'),
+    (NEW.id, '단기투자'),
     (NEW.id, '정찰병');
 END$$
 DELIMITER ;
@@ -220,7 +220,7 @@ DELIMITER ;
 ```sql
 INSERT INTO portfolios (user_id, name) VALUES
 (1, '장기투자'),
-(1, '단타'),
+(1, '단기투자'),
 (1, '정찰병');
 ```
 
@@ -459,7 +459,7 @@ LIMIT 200;  -- Adjust based on period
 
 **portfolios**:
 - Exactly 3 portfolios per user
-- Name: Must be one of `["장기투자", "단타", "정찰병"]`
+- Name: Must be one of `["장기투자", "단기투자", "정찰병"]`
 
 **holdings**:
 - Max 100 items per portfolio

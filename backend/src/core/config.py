@@ -38,12 +38,6 @@ class Settings(BaseSettings):
     COSMOS_DATABASE_NAME: str = "mystockdb"
     COSMOS_CONTAINER_NAME: str = "users"
     
-    # Legacy MySQL settings (commented out for Cosmos DB migration)
-    # DATABASE_URL: Optional[str] = None
-    # DATABASE_POOL_SIZE: int = 10
-    # DATABASE_MAX_OVERFLOW: int = 20
-    # DATABASE_POOL_RECYCLE: int = 3600
-    
     # Security Settings
     # Use JWT_SECRET env var if available, otherwise SECRET_KEY, otherwise generate random
     SECRET_KEY: Optional[str] = None
@@ -92,7 +86,7 @@ class Settings(BaseSettings):
     # Business Logic Constraints
     MAX_WATCHLIST_ITEMS: int = 50
     MAX_HOLDINGS_PER_PORTFOLIO: int = 100
-    PORTFOLIO_NAMES: List[str] = ["장기투자", "단타", "정찰병"]
+    PORTFOLIO_NAMES: List[str] = ["장기투자", "단기투자", "정찰병"]
     
     class Config:
         """Pydantic configuration."""

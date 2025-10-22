@@ -11,10 +11,6 @@ from .config import settings
 
 logger = logging.getLogger(__name__)
 
-# Legacy SQLAlchemy Base (kept for backward compatibility with old migrations)
-# This is a dummy placeholder and should not be used for new code
-Base = None
-
 # Global Cosmos client instance
 _cosmos_client: Optional[CosmosClient] = None
 _database = None

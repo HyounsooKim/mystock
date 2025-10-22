@@ -162,7 +162,7 @@ This document breaks down the implementation into concrete, actionable tasks fol
   - [X] Validate email format and password strength
   - [X] Hash password with bcrypt (cost factor 12)
   - [X] Create user record
-  - [X] Auto-create 3 portfolios ("장기투자", "단타", "정찰병")
+  - [X] Auto-create 3 portfolios ("장기투자", "단기투자", "정찰병")
   - [X] Return user response (no password)
 - [X] Implement `POST /api/v1/auth/login` endpoint
   - [X] Verify email and password
@@ -414,7 +414,7 @@ This document breaks down the implementation into concrete, actionable tasks fol
   - [X] `/register` - Registration page (public)
   - [X] `/watchlist` - Watchlist page (protected)
   - [X] `/stock/:symbol` - Stock detail page (protected, placeholder)
-  - [X] `/portfolio` - Portfolio page (protected)
+  - [X] `/portfolio` - Portfolio page (protected with "장기투자", "단기투자", "정찰병" tabs)
   - [X] `/` - Redirect to watchlist
   - [X] `*` - 404 Not Found page
 - [X] Create Pinia stores:

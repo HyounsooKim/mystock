@@ -45,7 +45,7 @@ def test_complete_auth_flow(client: TestClient):
         # Verify 3 portfolios were auto-created
     assert len(response_data["portfolios_created"]) == 3
     assert "장기투자" in response_data["portfolios_created"]
-    assert "단타" in response_data["portfolios_created"]
+    assert "단기투자" in response_data["portfolios_created"]
     assert "정찰병" in response_data["portfolios_created"]
     
     # Step 3: Login with valid credentials
