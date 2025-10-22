@@ -107,7 +107,7 @@
       
       <!-- Page body -->
       <div class="page-body">
-        <div class="container-xl">
+        <div :class="fullWidth ? 'container-fluid' : 'container-xl'">
           <slot />
         </div>
       </div>

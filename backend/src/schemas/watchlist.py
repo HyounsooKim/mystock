@@ -72,12 +72,10 @@ class WatchlistReorderRequest(BaseModel):
 class WatchlistItemResponse(BaseModel):
     """Watchlist item response schema."""
     
-    id: int = Field(..., description="Watchlist item ID")
-    user_id: int = Field(..., description="User ID")
     symbol: str = Field(..., description="Stock ticker symbol")
     display_order: int = Field(..., description="Display order (0-49)")
     notes: Optional[str] = Field(None, description="User notes")
-    created_at: datetime = Field(..., description="When stock was added")
+    added_at: datetime = Field(..., description="When stock was added")
     current_price: Optional[float] = Field(None, description="Current stock price")
     price_change: Optional[float] = Field(None, description="Price change from previous close")
     change_percent: Optional[float] = Field(None, description="Percent change from previous close")

@@ -7,6 +7,16 @@ from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import List, Union, Optional
 import secrets
+from pathlib import Path
+from dotenv import load_dotenv
+
+
+# Get the backend directory (parent of src)
+BACKEND_DIR = Path(__file__).parent.parent.parent
+ENV_FILE = BACKEND_DIR / ".env"
+
+# Load .env file before anything else
+load_dotenv(ENV_FILE)
 
 
 class Settings(BaseSettings):
@@ -22,11 +32,17 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
     DEBUG: bool = False
     
-    # Database Settings
-    DATABASE_URL: str
-    DATABASE_POOL_SIZE: int = 10
-    DATABASE_MAX_OVERFLOW: int = 20
-    DATABASE_POOL_RECYCLE: int = 3600
+    # Database Settings - Cosmos DB
+    COSMOS_ENDPOINT: str
+    COSMOS_KEY: str
+    COSMOS_DATABASE_NAME: str = "mystockdb"
+    COSMOS_CONTAINER_NAME: str = "users"
+    
+    # Legacy MySQL settings (commented out for Cosmos DB migration)
+    # DATABASE_URL: Optional[str] = None
+    # DATABASE_POOL_SIZE: int = 10
+    # DATABASE_MAX_OVERFLOW: int = 20
+    # DATABASE_POOL_RECYCLE: int = 3600
     
     # Security Settings
     # Use JWT_SECRET env var if available, otherwise SECRET_KEY, otherwise generate random
@@ -80,7 +96,7 @@ class Settings(BaseSettings):
     
     class Config:
         """Pydantic configuration."""
-        env_file = ".env"
+        env_file = str(ENV_FILE)
         env_file_encoding = "utf-8"
         case_sensitive = True
 

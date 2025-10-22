@@ -54,23 +54,25 @@
                 </div>
               </div>
               
-              <!-- Right: News Count Selector -->
-              <div class="col-auto ms-auto">
+                <!-- Right: News Count Selector -->
+                <div class="col-auto ms-auto">
                 <div class="d-flex align-items-center gap-2">
                   <label for="news-limit" class="form-label mb-0">표시 개수:</label>
                   <select 
-                    id="news-limit" 
-                    v-model.number="newsLimit" 
-                    @change="fetchNews" 
-                    class="form-select form-select-sm"
-                    style="width: auto;"
-                    disabled
+                  id="news-limit" 
+                  v-model.number="newsLimit" 
+                  @change="fetchNews" 
+                  class="form-select form-select-sm"
+                  style="width: auto;"
                   >
-                    <option :value="10">10개</option>
-                  </select>
-                  <small class="text-muted">(Yahoo Finance API 제한)</small>
+                  <option :value="10">10개</option>
+                  <option :value="20">20개</option>
+                  <option :value="30">30개</option>
+                  <option :value="40">40개</option>
+                  <option :value="50">50개</option>
+                  </select>                  
                 </div>
-              </div>
+                </div>
             </div>
           </div>
           

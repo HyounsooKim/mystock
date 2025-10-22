@@ -119,7 +119,7 @@ python -c "from src.core.database import engine; engine.connect(); print('✅ My
 
 # 7. 백엔드 서버 시작
 cd ..  # backend 디렉토리로 돌아가기
-.venv/bin/uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **백엔드 확인:**

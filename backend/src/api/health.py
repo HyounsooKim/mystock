@@ -4,8 +4,6 @@ Provides endpoints to verify application and database health.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 from datetime import datetime
 from src.core.database import get_db
 
@@ -13,8 +11,8 @@ from src.core.database import get_db
 router = APIRouter()
 
 
-@router.get("/health")
-async def health_check(db: Session = Depends(get_db)):
+@router.get("")  # "/" 대신 "" 사용
+async def health_check(container = Depends(get_db)):
     """Check application and database health.
     
     Returns:
@@ -24,9 +22,14 @@ async def health_check(db: Session = Depends(get_db)):
         HTTPException: If database connection fails
     """
     try:
-        # Test database connection
-        db.execute(text("SELECT 1"))
+        # Test Cosmos DB connection with a simple query
+        query = "SELECT VALUE COUNT(1) FROM c"
+        result = list(container.query_items(
+            query=query,
+            enable_cross_partition_query=True
+        ))
         db_status = "connected"
+        user_count = result[0] if result else 0
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -37,12 +40,14 @@ async def health_check(db: Session = Depends(get_db)):
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "database": db_status,
-        "version": "1.0.0"
+        "database_type": "Azure Cosmos DB NoSQL",
+        "user_count": user_count,
+        "version": "2.0.0"
     }
 
 
-@router.get("/health/db")
-async def database_health_check(db: Session = Depends(get_db)):
+@router.get("/db")  # "/health/db" 대신 "/db"
+async def database_health_check(container = Depends(get_db)):
     """Detailed database health check.
     
     Returns:
@@ -52,17 +57,18 @@ async def database_health_check(db: Session = Depends(get_db)):
         HTTPException: If database connection fails
     """
     try:
-        # Get MySQL version
-        result = db.execute(text("SELECT VERSION()"))
-        version = result.scalar()
-        
-        # Test write capability (within transaction, will rollback)
-        db.execute(text("SELECT 1 FROM users LIMIT 1"))
+        # Test Cosmos DB connection
+        query = "SELECT VALUE COUNT(1) FROM c"
+        result = list(container.query_items(
+            query=query,
+            enable_cross_partition_query=True
+        ))
         
         return {
             "status": "healthy",
-            "database": "MySQL",
-            "version": version,
+            "database": "connected",
+            "database_type": "Azure Cosmos DB NoSQL",
+            "user_count": result[0] if result else 0,
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:

@@ -70,7 +70,7 @@ class TokenResponse(BaseModel):
 class UserProfileResponse(BaseModel):
     """User profile response schema."""
     
-    id: int = Field(..., description="User ID")
+    id: str = Field(..., description="User ID (UUID)")
     email: str = Field(..., description="User email address")
     created_at: datetime = Field(..., description="Account creation timestamp")
     last_login_at: Optional[datetime] = Field(None, description="Last login timestamp")

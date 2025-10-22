@@ -15,16 +15,16 @@ class PortfolioResponse(BaseModel):
     """Response schema for portfolio information.
     
     Attributes:
-        id: Portfolio unique identifier
-        user_id: Owner user ID
+        id: Portfolio unique identifier (UUID string)
+        user_id: Owner user ID (UUID string)
         name: Portfolio name (e.g., "장기투자", "단타", "정찰병")
         created_at: Portfolio creation timestamp
         updated_at: Last update timestamp
         holdings_count: Number of holdings in portfolio (optional)
     """
     
-    id: int = Field(..., description="Portfolio ID", examples=[1])
-    user_id: int = Field(..., description="Owner user ID", examples=[1])
+    id: str = Field(..., description="Portfolio ID (UUID)", examples=["cab647a5-3d6c-418d-a4d9-214d064ef2a2"])
+    user_id: str = Field(..., description="Owner user ID (UUID)", examples=["4d9cd54d-4569-4833-b495-53d05d787f39"])
     name: str = Field(..., description="Portfolio name", examples=["장기투자"])
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
@@ -38,8 +38,8 @@ class HoldingResponse(BaseModel):
     """Response schema for holding information.
     
     Attributes:
-        id: Holding unique identifier
-        portfolio_id: Parent portfolio ID
+        id: Holding unique identifier (UUID string)
+        portfolio_id: Parent portfolio ID (UUID string)
         symbol: Stock symbol (e.g., AAPL, 005930.KS)
         company_name: Company name
         quantity: Number of shares held
@@ -54,8 +54,8 @@ class HoldingResponse(BaseModel):
         updated_at: Last update timestamp
     """
     
-    id: int = Field(..., description="Holding ID", examples=[1])
-    portfolio_id: int = Field(..., description="Portfolio ID", examples=[1])
+    id: str = Field(..., description="Holding ID (UUID)", examples=["abc123..."])
+    portfolio_id: str = Field(..., description="Portfolio ID (UUID)", examples=["cab647a5..."])
     symbol: str = Field(..., description="Stock symbol", examples=["AAPL"])
     company_name: Optional[str] = Field(None, description="Company name", examples=["Apple Inc."])
     quantity: int = Field(..., description="Number of shares", examples=[10])

@@ -15,14 +15,14 @@ security = HTTPBearer()
 
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> int:
+) -> str:
     """Extract and validate user ID from JWT token.
     
     Args:
         credentials: HTTP Authorization credentials
         
     Returns:
-        User ID from token
+        User ID from token (document id string)
         
     Raises:
         HTTPException: If token is invalid or missing
@@ -49,14 +49,14 @@ async def get_current_user_id(
 
 async def get_optional_user_id(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
-) -> Optional[int]:
+) -> Optional[str]:
     """Extract user ID from JWT token if present (for optional auth).
     
     Args:
         credentials: HTTP Authorization credentials (optional)
         
     Returns:
-        User ID from token if present and valid, None otherwise
+        User ID from token (document id string) if present and valid, None otherwise
     """
     if credentials is None:
         return None

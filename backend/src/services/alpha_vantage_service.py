@@ -9,8 +9,9 @@ from datetime import datetime, timedelta
 import logging
 import os
 
-from src.models.stock_quote import Market, MarketStatus
-from src.models.candlestick_data import Period
+from src.schemas.stocks import MarketEnum as Market, MarketStatusEnum as MarketStatus, PeriodEnum as Period
+# from src.models.stock_quote import Market, MarketStatus
+# from src.models.candlestick_data import Period
 
 
 logger = logging.getLogger(__name__)

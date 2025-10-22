@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from src.core.config import settings
-from src.core.database import engine
+from src.core.database import initialize_cosmos_db, close_cosmos_client
 from src.api import api_router
 
 
@@ -29,16 +29,26 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting MyStock API...")
-    logger.info(f"Database URL: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'configured'}")
+    logger.info(f"Cosmos DB endpoint: {settings.COSMOS_ENDPOINT}")
+    logger.info(f"Cosmos DB database: {settings.COSMOS_DATABASE_NAME}")
+    logger.info(f"Cosmos DB container: {settings.COSMOS_CONTAINER_NAME}")
     logger.info(f"Debug mode: {settings.DEBUG}")
     logger.info(f"CORS origins: {settings.CORS_ORIGINS}")
+    
+    # Initialize Cosmos DB
+    try:
+        initialize_cosmos_db()
+        logger.info("Cosmos DB initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Cosmos DB: {e}")
+        raise
     
     yield
     
     # Shutdown
     logger.info("Shutting down MyStock API...")
-    engine.dispose()
-    logger.info("Database connections closed")
+    close_cosmos_client()
+    logger.info("Cosmos DB connection closed")
 
 
 # Initialize FastAPI application

@@ -86,14 +86,14 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_user_id_from_token(token: str) -> Optional[int]:
+def get_user_id_from_token(token: str) -> Optional[str]:
     """Extract user ID from JWT token.
     
     Args:
         token: JWT token string
         
     Returns:
-        User ID if token is valid, None otherwise
+        User ID (UUID string) if token is valid, None otherwise
     """
     payload = verify_token(token)
     if payload is None:
@@ -103,7 +103,5 @@ def get_user_id_from_token(token: str) -> Optional[int]:
     if user_id is None:
         return None
     
-    try:
-        return int(user_id)
-    except (ValueError, TypeError):
-        return None
+    # Return as string (UUID)
+    return str(user_id)

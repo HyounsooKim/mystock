@@ -5,9 +5,10 @@ gunicorn==21.2.0
 pydantic-settings==2.1.0
 
 # Database
-sqlalchemy==2.0.23
-pymysql==1.1.0
-alembic==1.12.1
+# sqlalchemy==2.0.23  # Replaced with Cosmos DB
+# pymysql==1.1.0  # Replaced with Cosmos DB
+# alembic==1.12.1  # Not needed for NoSQL
+azure-cosmos==4.5.1
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0

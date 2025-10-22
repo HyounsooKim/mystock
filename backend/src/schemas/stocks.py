@@ -26,8 +26,8 @@ class MarketEnum(str, Enum):
 
 class MarketStatusEnum(str, Enum):
     """Market trading status."""
-    OPEN = "OPEN"
-    CLOSED = "CLOSED"
+    OPEN = "open"
+    CLOSED = "closed"
 
 
 class StockQuoteResponse(BaseModel):

@@ -37,150 +37,74 @@
       
       <!-- Portfolio content -->
       <template v-else-if="portfolioStore.summary">
-        <div class="col-12">
-          <div class="row">
-            <!-- USD Portfolio Section -->
-            <div 
-              :class="portfolioStore.summary.krw_cost_basis > 0 ? 'col-lg-6' : 'col-12'"
-              v-if="portfolioStore.summary.usd_cost_basis > 0"
-            >
-              <h4 class="mb-3">미국 주식 (USD)</h4>
-              <div class="row">
-                <!-- Left: Summary Cards (60%) -->
-                <div class="col-lg-7">
-                  <div class="row">
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">총 투자금</div>
-                          <div class="h3 mb-0">
-                            {{ formatUSD(portfolioStore.summary.usd_cost_basis) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">현재 가치</div>
-                          <div class="h3 mb-0">
-                            {{ formatUSD(portfolioStore.summary.usd_current_value) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">수익/손실</div>
-                          <div
-                            class="h3 mb-0"
-                            :class="getProfitLossClass(portfolioStore.summary.usd_profit_loss)"
-                          >
-                            {{ formatUSD(portfolioStore.summary.usd_profit_loss) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">수익률</div>
-                          <div
-                            class="h3 mb-0"
-                            :class="getProfitLossClass(portfolioStore.summary.usd_profit_loss)"
-                          >
-                            {{ formatPercent(portfolioStore.summary.usd_return_rate) }}
-                          </div>
-                        </div>
+        <!-- Summary Cards & Treemap Row -->
+        <!-- Left: Summary Cards (50%) -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="row row-cards">
+                <div class="col-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="subheader mb-2">총 투자금</div>
+                      <div class="h2 mb-0">
+                        ${{ formatNumber(portfolioStore.summary.total_cost_basis) }}
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <!-- Right: Treemap (40%) -->
-                <div class="col-lg-5">
-                  <PortfolioTreemap 
-                    :holdings="usdHoldings" 
-                    chart-height="240px"
-                  />
+                <div class="col-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="subheader mb-2">현재 가치</div>
+                      <div class="h2 mb-0">
+                        ${{ formatNumber(portfolioStore.summary.total_current_value) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="subheader mb-2">수익/손실</div>
+                      <div
+                        class="h2 mb-0"
+                        :class="getProfitLossClass(portfolioStore.summary.total_profit_loss)"
+                      >
+                        ${{ formatNumber(portfolioStore.summary.total_profit_loss) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <div class="subheader mb-2">수익률</div>
+                      <div
+                        class="h2 mb-0"
+                        :class="getProfitLossClass(portfolioStore.summary.total_profit_loss)"
+                      >
+                        {{ formatPercent(portfolioStore.summary.total_return_rate) }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <!-- KRW Portfolio Section -->
-            <div 
-              :class="portfolioStore.summary.usd_cost_basis > 0 ? 'col-lg-6' : 'col-12'"
-              v-if="portfolioStore.summary.krw_cost_basis > 0"
-            >
-              <h4 class="mb-3">한국 주식 (KRW)</h4>
-              <div class="row">
-                <!-- Left: Summary Cards (60%) -->
-                <div class="col-lg-7">
-                  <div class="row">
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">총 투자금</div>
-                          <div class="h3 mb-0">
-                            {{ formatKRW(portfolioStore.summary.krw_cost_basis) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">현재 가치</div>
-                          <div class="h3 mb-0">
-                            {{ formatKRW(portfolioStore.summary.krw_current_value) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">수익/손실</div>
-                          <div
-                            class="h3 mb-0"
-                            :class="getProfitLossClass(portfolioStore.summary.krw_profit_loss)"
-                          >
-                            {{ formatKRW(portfolioStore.summary.krw_profit_loss) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="col-6 mb-3">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="subheader small">수익률</div>
-                          <div
-                            class="h3 mb-0"
-                            :class="getProfitLossClass(portfolioStore.summary.krw_profit_loss)"
-                          >
-                            {{ formatPercent(portfolioStore.summary.krw_return_rate) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Right: Treemap (40%) -->
-                <div class="col-lg-5">
-                  <PortfolioTreemap 
-                    :holdings="krwHoldings" 
-                    chart-height="240px"
-                  />
-                </div>
-              </div>
+          </div>
+        </div>
+        
+        <!-- Right: Treemap (50%) -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <PortfolioTreemap 
+                :holdings="portfolioStore.holdings" 
+                chart-height="200px"
+              />
             </div>
           </div>
         </div>
@@ -417,19 +341,6 @@ const profitLossClass = computed(() => {
   return profitLoss >= 0 ? 'text-success' : 'text-danger'
 })
 
-// Separate holdings by stock type
-const usdHoldings = computed(() => {
-  const usd = portfolioStore.holdings.filter(h => !h.symbol.includes('.'))
-  console.log('USD Holdings:', usd)
-  return usd
-})
-
-const krwHoldings = computed(() => {
-  const krw = portfolioStore.holdings.filter(h => h.symbol.includes('.'))
-  console.log('KRW Holdings:', krw)
-  return krw
-})
-
 // Lifecycle
 onMounted(async () => {
   await portfolioStore.fetchPortfolios()
@@ -539,6 +450,14 @@ function formatUSD(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD'
+  }).format(value)
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined) return '-'
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(value)
 }
 

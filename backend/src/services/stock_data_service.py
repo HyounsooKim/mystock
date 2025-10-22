@@ -9,8 +9,9 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 import logging
 
-from src.models.stock_quote import Market, MarketStatus
-from src.models.candlestick_data import Period, CandlestickData
+from src.schemas.stocks import MarketEnum as Market, MarketStatusEnum as MarketStatus, PeriodEnum as Period
+# from src.models.stock_quote import Market, MarketStatus
+# from src.models.candlestick_data import Period, CandlestickData
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,8 @@ class StockDataService:
         self.api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
         if not self.api_key:
             logger.warning("ALPHA_VANTAGE_API_KEY not found in environment variables")
+        else:
+            logger.info(f"Alpha Vantage API key loaded: {self.api_key[:4]}...{self.api_key[-4:]}")
         
         # Check if delayed data should be used (default: true)
         use_delayed_str = os.getenv("ALPHA_VANTAGE_USE_DELAYED", "true").lower()
@@ -167,7 +170,7 @@ class StockDataService:
             Tuple of (function_name, interval) for Alpha Vantage API
         """
         mapping = {
-            Period.THIRTY_MIN: ("TIME_SERIES_INTRADAY", "30min"),
+            Period.FIVE_MIN: ("TIME_SERIES_INTRADAY", "5min"),
             Period.ONE_HOUR: ("TIME_SERIES_INTRADAY", "60min"),
             Period.ONE_DAY: ("TIME_SERIES_DAILY", None),
             Period.ONE_WEEK: ("TIME_SERIES_WEEKLY", None),
@@ -200,7 +203,7 @@ class StockDataService:
     def _get_max_points(period: Period) -> int:
         """Get maximum number of data points to return based on period."""
         limits = {
-            Period.THIRTY_MIN: 100,
+            Period.FIVE_MIN: 100,
             Period.ONE_HOUR: 100,
             Period.ONE_DAY: 100,
             Period.ONE_WEEK: 52,
@@ -257,6 +260,8 @@ class StockDataService:
             # Add entitlement parameter if using delayed data
             if self.use_delayed:
                 params["entitlement"] = "delayed"
+            
+            logger.info(f"Requesting candlestick data for {symbol} with params: {params}")
             
             response = requests.get(self.BASE_URL, params=params, timeout=10)
             response.raise_for_status()

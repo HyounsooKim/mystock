@@ -1,18 +1,18 @@
 """Stock data API endpoints.
 
-Handles stock quote retrieval and candlestick chart data with caching.
+Handles stock quote retrieval and candlestick chart data without caching (Cosmos DB migration).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
 
 from src.core.database import get_db
 from src.core.config import settings
-from src.models import StockQuote, CandlestickData
-from src.models.stock_quote import MarketStatus, Market
-from src.models.candlestick_data import Period
+# Legacy SQLAlchemy models (commented out for Cosmos DB migration)
+# from src.models import StockQuote, CandlestickData
+# from src.models.stock_quote import MarketStatus, Market
+# from src.models.candlestick_data import Period
 from src.schemas.stocks import (
     PeriodEnum,
     StockQuoteResponse,
@@ -31,18 +31,13 @@ stock_service = StockDataService()
 
 
 @router.get("/{symbol}", response_model=StockQuoteResponse)
-async def get_stock_quote(
-    symbol: str,
-    db: Session = Depends(get_db)
-):
-    """Get stock quote with 5-minute cache.
+async def get_stock_quote(symbol: str):
+    """Get stock quote directly from Alpha Vantage API (no caching).
     
     Fetches current stock price, daily change, volume, and market status.
-    Uses cached data if less than 5 minutes old, otherwise fetches fresh data from yfinance.
     
     Args:
-        symbol: Stock ticker symbol (e.g., 'AAPL', '005930.KS')
-        db: Database session
+        symbol: Stock ticker symbol (e.g., 'AAPL', 'TSLA')
         
     Returns:
         Stock quote data
@@ -52,25 +47,7 @@ async def get_stock_quote(
     """
     symbol = symbol.upper()
     
-    # Check cache (5-minute TTL)
-    cache_ttl = timedelta(seconds=settings.STOCK_CACHE_TTL_SECONDS)
-    cached_quote = db.query(StockQuote).filter(
-        StockQuote.symbol == symbol,
-        StockQuote.updated_at >= datetime.utcnow() - cache_ttl
-    ).first()
-    
-    if cached_quote:
-        return StockQuoteResponse(
-            symbol=str(cached_quote.symbol),  # type: ignore
-            current_price=float(cached_quote.current_price),  # type: ignore
-            daily_change_pct=float(cached_quote.daily_change_pct),  # type: ignore
-            volume=int(cached_quote.volume) if cached_quote.volume else None,  # type: ignore
-            market_status=str(cached_quote.market_status),  # type: ignore
-            market=str(cached_quote.market),  # type: ignore
-            updated_at=cached_quote.updated_at  # type: ignore
-        )
-    
-    # Cache miss - fetch from Alpha Vantage
+    # Fetch from Alpha Vantage
     quote_data = stock_service.get_quote(symbol)
     
     if not quote_data:
@@ -79,42 +56,14 @@ async def get_stock_quote(
             detail=f"Stock symbol '{symbol}' not found or data unavailable"
         )
     
-    # Update or create cache entry
-    existing = db.query(StockQuote).filter(StockQuote.symbol == symbol).first()
-    
-    if existing:
-        existing.current_price = quote_data['current_price']  # type: ignore
-        existing.daily_change_pct = quote_data['daily_change_pct']  # type: ignore
-        existing.volume = quote_data['volume']  # type: ignore
-        existing.market_status = quote_data['market_status']  # type: ignore
-        existing.market = quote_data['market']  # type: ignore
-        existing.updated_at = datetime.utcnow()  # type: ignore
-        existing.cache_data = quote_data['cache_data']  # type: ignore
-        db.commit()
-        db.refresh(existing)
-        cached_quote = existing
-    else:
-        cached_quote = StockQuote(
-            symbol=symbol,
-            current_price=quote_data['current_price'],
-            daily_change_pct=quote_data['daily_change_pct'],
-            volume=quote_data['volume'],
-            market_status=quote_data['market_status'],
-            market=quote_data['market'],
-            cache_data=quote_data['cache_data']
-        )
-        db.add(cached_quote)
-        db.commit()
-        db.refresh(cached_quote)
-    
     return StockQuoteResponse(
-        symbol=str(cached_quote.symbol),  # type: ignore
-        current_price=float(cached_quote.current_price),  # type: ignore
-        daily_change_pct=float(cached_quote.daily_change_pct),  # type: ignore
-        volume=int(cached_quote.volume) if cached_quote.volume else None,  # type: ignore
-        market_status=str(cached_quote.market_status),  # type: ignore
-        market=str(cached_quote.market),  # type: ignore
-        updated_at=cached_quote.updated_at  # type: ignore
+        symbol=symbol,
+        current_price=quote_data.get('current_price'),
+        daily_change_pct=quote_data.get('daily_change_pct'),
+        volume=quote_data.get('volume'),
+        market_status=quote_data.get('market_status', 'unknown'),
+        market=quote_data.get('market', 'US'),
+        updated_at=datetime.utcnow()
     )
 
 
@@ -140,18 +89,9 @@ async def get_chart_data(
     """
     symbol = symbol.upper()
     
-    # Convert PeriodEnum to Period model enum
-    period_map = {
-        PeriodEnum.FIVE_MIN: Period.FIVE_MIN,
-        PeriodEnum.ONE_HOUR: Period.ONE_HOUR,
-        PeriodEnum.ONE_DAY: Period.ONE_DAY,
-        PeriodEnum.ONE_WEEK: Period.ONE_WEEK,
-        PeriodEnum.ONE_MONTH: Period.ONE_MONTH,
-    }
-    db_period = period_map[period]
-    
     # Fetch directly from Alpha Vantage (no caching)
-    candle_data = stock_service.get_candlestick_data(symbol, db_period)
+    # Pass the Period enum directly, not the value
+    candle_data = stock_service.get_candlestick_data(symbol, period)
     
     if not candle_data:
         raise HTTPException(
@@ -159,7 +99,7 @@ async def get_chart_data(
             detail=f"Chart data not available for symbol '{symbol}' with period '{period.value}'"
         )
     
-    # Convert to response format (no database storage)
+    # Convert to response format
     candlesticks = [
         CandlestickResponse(
             date=candle['date'],

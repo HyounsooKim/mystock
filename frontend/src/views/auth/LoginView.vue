@@ -84,6 +84,12 @@ async function handleLogin() {
   try {
     await authStore.login(email.value, password.value)
     
+    console.log('[LoginView] Login successful, token:', authStore.token ? `${authStore.token.substring(0, 20)}...` : 'null')
+    console.log('[LoginView] isAuthenticated:', authStore.isAuthenticated)
+    
+    // Wait for next tick to ensure store is updated
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
     // Redirect to original page or watchlist
     const redirect = route.query.redirect || '/watchlist'
     router.push(redirect)
