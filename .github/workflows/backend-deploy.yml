@@ -47,8 +47,6 @@ jobs:
         tags: |
           ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        cache-from: type=registry,ref=${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-        cache-to: type=registry,ref=${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
     
     - name: Deploy to Azure Container Apps
       uses: azure/CLI@v1
