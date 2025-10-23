@@ -20,6 +20,8 @@ from src.schemas.stocks import (
     ChartDataResponse,
     NewsResponse,
     NewsItemResponse,
+    TopMoversResponse,
+    TopMoverItem,
 )
 from src.services.stock_data_service import StockDataService
 
@@ -169,4 +171,69 @@ async def get_stock_news(
         symbol=symbol,
         news=news_items,
         total=len(news_items)
+    )
+
+
+@router.get("/market/top-movers", response_model=TopMoversResponse)
+async def get_top_movers():
+    """Get top gainers, losers, and most actively traded stocks.
+    
+    Fetches the top 20 gaining, losing, and most actively traded US stocks
+    from Alpha Vantage API. This data is updated periodically by Alpha Vantage.
+    
+    Returns:
+        Top movers data with gainers, losers, and most actively traded lists
+        
+    Raises:
+        HTTPException 503: If data is unavailable from Alpha Vantage
+    """
+    # Fetch top movers directly from Alpha Vantage
+    movers_data = stock_service.get_top_movers()
+    
+    if not movers_data:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Top movers data is currently unavailable. Please try again later."
+        )
+    
+    # Convert to response format
+    top_gainers = [
+        TopMoverItem(
+            ticker=item['ticker'],
+            price=item['price'],
+            change_amount=item['change_amount'],
+            change_percentage=item['change_percentage'],
+            volume=item['volume']
+        )
+        for item in movers_data.get('top_gainers', [])
+    ]
+    
+    top_losers = [
+        TopMoverItem(
+            ticker=item['ticker'],
+            price=item['price'],
+            change_amount=item['change_amount'],
+            change_percentage=item['change_percentage'],
+            volume=item['volume']
+        )
+        for item in movers_data.get('top_losers', [])
+    ]
+    
+    most_actively_traded = [
+        TopMoverItem(
+            ticker=item['ticker'],
+            price=item['price'],
+            change_amount=item['change_amount'],
+            change_percentage=item['change_percentage'],
+            volume=item['volume']
+        )
+        for item in movers_data.get('most_actively_traded', [])
+    ]
+    
+    return TopMoversResponse(
+        metadata=movers_data.get('metadata', 'Top gainers, losers, and most actively traded US tickers'),
+        last_updated=movers_data.get('last_updated', ''),
+        top_gainers=top_gainers,
+        top_losers=top_losers,
+        most_actively_traded=most_actively_traded
     )
