@@ -59,4 +59,12 @@ apiClient.interceptors.response.use(
   }
 )
 
+// API functions for stocks
+export const stocksApi = {
+  async getTopMovers() {
+    const response = await apiClient.get('/stocks/market/top-movers')
+    return response.data
+  }
+}
+
 export default apiClient
