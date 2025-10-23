@@ -81,16 +81,6 @@
                   </span>
                 </router-link>
               </li>
-              <li class="nav-item">
-                <router-link to="/top-movers" class="nav-link" active-class="active">
-                  <span class="nav-link-icon d-md-none d-lg-inline-block">
-                    <i class="ti ti-trending-up"></i>
-                  </span>
-                  <span class="nav-link-title">
-                    급등락 종목
-                  </span>
-                </router-link>
-              </li>
             </ul>
           </div>
         </div>

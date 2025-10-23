@@ -37,12 +37,6 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/top-movers',
-    name: 'TopMovers',
-    component: () => import('@/views/TopMoversView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue')

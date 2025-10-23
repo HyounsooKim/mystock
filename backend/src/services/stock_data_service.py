@@ -6,7 +6,7 @@ Provides functions to fetch stock quotes and candlestick data from Alpha Vantage
 import requests
 import os
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from src.schemas.stocks import MarketEnum as Market, MarketStatusEnum as MarketStatus, PeriodEnum as Period
@@ -597,68 +597,4 @@ class StockDataService:
             return None
         except Exception as e:
             logger.error(f"Error fetching company overview for {symbol}: {str(e)}")
-            return None
-    
-    def get_top_movers(self) -> Optional[Dict[str, Any]]:
-        """Fetch top gainers, losers, and most actively traded stocks from Alpha Vantage.
-        
-        Returns:
-            Dictionary with top_gainers, top_losers, and most_actively_traded lists,
-            or None if fetch fails
-            
-        Example:
-            {
-                'metadata': 'Top gainers, losers, and most actively traded US tickers',
-                'last_updated': '2025-10-21 16:16:00 US/Eastern',
-                'top_gainers': [...],
-                'top_losers': [...],
-                'most_actively_traded': [...]
-            }
-        """
-        try:
-            logger.info("Fetching top movers from Alpha Vantage")
-            
-            params = {
-                "function": "TOP_GAINERS_LOSERS",
-                "apikey": self.api_key
-            }
-            
-            # Add entitlement parameter if using delayed data
-            if self.use_delayed:
-                params["entitlement"] = "delayed"
-            
-            response = requests.get(self.BASE_URL, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Check for API errors
-            if "Error Message" in data:
-                logger.error(f"Alpha Vantage error: {data['Error Message']}")
-                return None
-            
-            if "Note" in data:
-                logger.warning(f"Alpha Vantage rate limit: {data['Note']}")
-                return None
-            
-            # Validate required fields exist
-            if "top_gainers" not in data or "top_losers" not in data or "most_actively_traded" not in data:
-                logger.warning("Missing required fields in top movers response")
-                return None
-            
-            logger.info(f"Successfully fetched top movers: {len(data['top_gainers'])} gainers, "
-                       f"{len(data['top_losers'])} losers, {len(data['most_actively_traded'])} active")
-            
-            return {
-                'metadata': data.get('metadata', 'Top gainers, losers, and most actively traded US tickers'),
-                'last_updated': data.get('last_updated', ''),
-                'top_gainers': data.get('top_gainers', []),
-                'top_losers': data.get('top_losers', []),
-                'most_actively_traded': data.get('most_actively_traded', [])
-            }
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Network error fetching top movers: {str(e)}")
-            return None
-        except Exception as e:
-            logger.error(f"Error fetching top movers: {str(e)}")
             return None
