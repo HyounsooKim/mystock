@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Movers - MyStock Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+    <style>
+        .cursor-pointer:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        .ticker-symbol {
+            font-family: monospace;
+            font-size: 0.95rem;
+        }
+        .price-value {
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .bg-red-lt {
+            background-color: rgba(214, 57, 57, 0.1);
+        }
+        .bg-blue-lt {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        .bg-gray-lt {
+            background-color: rgba(107, 114, 128, 0.1);
+        }
+        .text-red {
+            color: #d63939;
+        }
+        .text-green {
+            color: #2fb344;
+        }
+        .text-blue {
+            color: #3b82f6;
+        }
+        .text-gray {
+            color: #6b7280;
+        }
+        .floating-refresh {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+        }
+        .btn-icon {
+            width: 3rem;
+            height: 3rem;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Navbar -->
+        <header class="navbar navbar-expand-md navbar-light d-print-none">
+            <div class="container-xl">
+                <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+                    <a href="/">
+                        <span style="font-size: 1.5rem; font-weight: 600; color: #0054a6;">MyStock</span>
+                    </a>
+                </h1>
+            </div>
+        </header>
+
+        <!-- Navigation tabs -->
+        <div class="navbar-expand-md">
+            <div class="navbar navbar-light">
+                <div class="container-xl">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                    <i class="ti ti-star"></i>
+                                </span>
+                                <span class="nav-link-title">관심종목</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                    <i class="ti ti-briefcase"></i>
+                                </span>
+                                <span class="nav-link-title">포트폴리오</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active">
+                                <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                    <i class="ti ti-trending-up"></i>
+                                </span>
+                                <span class="nav-link-title">급등락 종목들</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <!-- Page header -->
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <div class="page-pretitle">Top Market Movers</div>
+                            <h2 class="page-title">급등락 종목들</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page body -->
+            <div class="page-body">
+                <div class="container-fluid">
+                    <!-- Last Updated Info -->
+                    <div class="mb-3">
+                        <div class="text-muted">
+                            <i class="ti ti-clock me-1"></i>
+                            마지막 업데이트: 2025-10-21 16:16:00 US/Eastern
+                        </div>
+                    </div>
+
+                    <!-- Top Movers Content -->
+                    <div class="row row-cols-1 row-cols-md-3 g-4">
+                        <!-- Top Gainers -->
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header bg-red-lt">
+                                    <h3 class="card-title">
+                                        <i class="ti ti-trending-up text-red me-2"></i>
+                                        상승 상위
+                                    </h3>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-vcenter card-table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th class="w-1">#</th>
+                                                    <th>티커</th>
+                                                    <th class="text-end">가격</th>
+                                                    <th class="text-end">변화</th>
+                                                    <th class="text-end">변화율</th>
+                                                    <th class="text-end">거래량</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">1</td>
+                                                    <td><strong class="ticker-symbol">BYND</strong></td>
+                                                    <td class="text-end"><span class="price-value">$3.62</span></td>
+                                                    <td class="text-end text-green">+2.15</td>
+                                                    <td class="text-end text-green"><strong>+146.26%</strong></td>
+                                                    <td class="text-end text-muted">1.81B</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">2</td>
+                                                    <td><strong class="ticker-symbol">SVREW</strong></td>
+                                                    <td class="text-end"><span class="price-value">$0.0500</span></td>
+                                                    <td class="text-end text-green">+0.03</td>
+                                                    <td class="text-end text-green"><strong>+141.55%</strong></td>
+                                                    <td class="text-end text-muted">7.46K</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">3</td>
+                                                    <td><strong class="ticker-symbol">NERV</strong></td>
+                                                    <td class="text-end"><span class="price-value">$6.41</span></td>
+                                                    <td class="text-end text-green">+3.75</td>
+                                                    <td class="text-end text-green"><strong>+140.98%</strong></td>
+                                                    <td class="text-end text-muted">165.76M</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">4</td>
+                                                    <td><strong class="ticker-symbol">RYOJ</strong></td>
+                                                    <td class="text-end"><span class="price-value">$9.12</span></td>
+                                                    <td class="text-end text-green">+5.32</td>
+                                                    <td class="text-end text-green"><strong>+140.00%</strong></td>
+                                                    <td class="text-end text-muted">22.57M</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">5</td>
+                                                    <td><strong class="ticker-symbol">VSEEW</strong></td>
+                                                    <td class="text-end"><span class="price-value">$0.0497</span></td>
+                                                    <td class="text-end text-green">+0.03</td>
+                                                    <td class="text-end text-green"><strong>+133.33%</strong></td>
+                                                    <td class="text-end text-muted">665.94K</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Top Losers -->
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header bg-blue-lt">
+                                    <h3 class="card-title">
+                                        <i class="ti ti-trending-down text-blue me-2"></i>
+                                        하락 상위
+                                    </h3>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-vcenter card-table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th class="w-1">#</th>
+                                                    <th>티커</th>
+                                                    <th class="text-end">가격</th>
+                                                    <th class="text-end">변화</th>
+                                                    <th class="text-end">변화율</th>
+                                                    <th class="text-end">거래량</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">1</td>
+                                                    <td><strong class="ticker-symbol">RGTU</strong></td>
+                                                    <td class="text-end"><span class="price-value">$72.89</span></td>
+                                                    <td class="text-end text-red">-184.81</td>
+                                                    <td class="text-end text-red"><strong>-71.72%</strong></td>
+                                                    <td class="text-end text-muted">77.21K</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">2</td>
+                                                    <td><strong class="ticker-symbol">QBTX</strong></td>
+                                                    <td class="text-end"><span class="price-value">$79.00</span></td>
+                                                    <td class="text-end text-red">-190.74</td>
+                                                    <td class="text-end text-red"><strong>-70.71%</strong></td>
+                                                    <td class="text-end text-muted">423.71K</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">3</td>
+                                                    <td><strong class="ticker-symbol">NEUP</strong></td>
+                                                    <td class="text-end"><span class="price-value">$4.85</span></td>
+                                                    <td class="text-end text-red">-10.55</td>
+                                                    <td class="text-end text-red"><strong>-68.51%</strong></td>
+                                                    <td class="text-end text-muted">2.59M</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">4</td>
+                                                    <td><strong class="ticker-symbol">UHGWW</strong></td>
+                                                    <td class="text-end"><span class="price-value">$0.0637</span></td>
+                                                    <td class="text-end text-red">-0.11</td>
+                                                    <td class="text-end text-red"><strong>-62.53%</strong></td>
+                                                    <td class="text-end text-muted">559.90K</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">5</td>
+                                                    <td><strong class="ticker-symbol">NVAWW</strong></td>
+                                                    <td class="text-end"><span class="price-value">$26.02</span></td>
+                                                    <td class="text-end text-red">-15.97</td>
+                                                    <td class="text-end text-red"><strong>-38.03%</strong></td>
+                                                    <td class="text-end text-muted">847</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Most Active -->
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header bg-gray-lt">
+                                    <h3 class="card-title">
+                                        <i class="ti ti-activity text-gray me-2"></i>
+                                        거래량 상위
+                                    </h3>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-vcenter card-table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th class="w-1">#</th>
+                                                    <th>티커</th>
+                                                    <th class="text-end">가격</th>
+                                                    <th class="text-end">변화</th>
+                                                    <th class="text-end">변화율</th>
+                                                    <th class="text-end">거래량</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">1</td>
+                                                    <td><strong class="ticker-symbol">BYND</strong></td>
+                                                    <td class="text-end"><span class="price-value">$3.62</span></td>
+                                                    <td class="text-end text-green">+2.15</td>
+                                                    <td class="text-end text-green"><strong>+146.26%</strong></td>
+                                                    <td class="text-end text-muted">1.81B</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">2</td>
+                                                    <td><strong class="ticker-symbol">YDKG</strong></td>
+                                                    <td class="text-end"><span class="price-value">$0.0567</span></td>
+                                                    <td class="text-end text-green">+0.01</td>
+                                                    <td class="text-end text-green"><strong>+27.99%</strong></td>
+                                                    <td class="text-end text-muted">808.00M</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">3</td>
+                                                    <td><strong class="ticker-symbol">YYAI</strong></td>
+                                                    <td class="text-end"><span class="price-value">$0.0809</span></td>
+                                                    <td class="text-end text-red">-0.02</td>
+                                                    <td class="text-end text-red"><strong>-19.18%</strong></td>
+                                                    <td class="text-end text-muted">633.11M</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">4</td>
+                                                    <td><strong class="ticker-symbol">F</strong></td>
+                                                    <td class="text-end"><span class="price-value">$12.57</span></td>
+                                                    <td class="text-end text-green">+0.58</td>
+                                                    <td class="text-end text-green"><strong>+4.84%</strong></td>
+                                                    <td class="text-end text-muted">295.92M</td>
+                                                </tr>
+                                                <tr class="cursor-pointer">
+                                                    <td class="text-muted">5</td>
+                                                    <td><strong class="ticker-symbol">VSEE</strong></td>
+                                                    <td class="text-end"><span class="price-value">$0.9452</span></td>
+                                                    <td class="text-end text-green">+0.46</td>
+                                                    <td class="text-end text-green"><strong>+93.57%</strong></td>
+                                                    <td class="text-end text-muted">260.44M</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Floating Refresh Button -->
+                    <div class="floating-refresh">
+                        <button class="btn btn-primary btn-icon">
+                            <i class="ti ti-refresh"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
+</body>
+</html>
