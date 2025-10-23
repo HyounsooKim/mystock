@@ -305,6 +305,56 @@ class AlphaVantageService:
             logger.error(f"Error fetching news for {symbol}: {str(e)}")
             return None
     
+    def get_top_movers(self) -> Optional[Dict[str, Any]]:
+        """Fetch top movers (gainers, losers, most active) from Alpha Vantage.
+        
+        Returns:
+            Dictionary with top_gainers, top_losers, most_actively_traded lists
+            or None if fetch fails
+        """
+        try:
+            params = {
+                'function': 'TOP_GAINERS_LOSERS',
+                'apikey': self.api_key
+            }
+            
+            response = requests.get(self.BASE_URL, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for errors
+            if 'Error Message' in data:
+                logger.error(f"Alpha Vantage top movers error: {data['Error Message']}")
+                return None
+            
+            if 'Note' in data:
+                logger.warning(f"Alpha Vantage API limit reached: {data['Note']}")
+                return None
+            
+            # Validate response has required keys
+            required_keys = ['top_gainers', 'top_losers', 'most_actively_traded']
+            if not all(key in data for key in required_keys):
+                logger.error(f"Invalid top movers response format: missing required keys")
+                return None
+            
+            return {
+                'metadata': data.get('metadata', 'Top gainers, losers, and most actively traded US tickers'),
+                'last_updated': data.get('last_updated', ''),
+                'top_gainers': data.get('top_gainers', []),
+                'top_losers': data.get('top_losers', []),
+                'most_actively_traded': data.get('most_actively_traded', [])
+            }
+            
+        except requests.exceptions.Timeout:
+            logger.error("Timeout fetching top movers from Alpha Vantage")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching top movers: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching top movers: {str(e)}")
+            return None
+    
     def _convert_symbol(self, symbol: str) -> str:
         """Convert stock symbol to Alpha Vantage format.
         

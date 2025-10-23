@@ -37,6 +37,15 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/top-movers',
+    name: 'TopMovers',
+    component: () => import('@/views/TopMoversView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: '급등락 종목들'
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue')

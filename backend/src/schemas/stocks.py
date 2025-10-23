@@ -151,3 +151,53 @@ class NewsResponse(BaseModel):
                 "total": 10
             }
         }
+
+
+class StockMoverItem(BaseModel):
+    """Single stock mover item (gainer/loser/active)."""
+    
+    ticker: str = Field(..., description="Stock ticker symbol")
+    price: str = Field(..., description="Current stock price")
+    change_amount: str = Field(..., description="Price change amount")
+    change_percentage: str = Field(..., description="Percentage change with % sign")
+    volume: str = Field(..., description="Trading volume")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "ticker": "BYND",
+                "price": "3.62",
+                "change_amount": "2.15",
+                "change_percentage": "146.2585%",
+                "volume": "1812070328"
+            }
+        }
+
+
+class TopMoversResponse(BaseModel):
+    """Top movers (gainers, losers, most active) response."""
+    
+    metadata: str = Field(..., description="Response metadata")
+    last_updated: str = Field(..., description="Last update timestamp")
+    top_gainers: List[StockMoverItem] = Field(..., description="Top gaining stocks")
+    top_losers: List[StockMoverItem] = Field(..., description="Top losing stocks")
+    most_actively_traded: List[StockMoverItem] = Field(..., description="Most actively traded stocks")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "metadata": "Top gainers, losers, and most actively traded US tickers",
+                "last_updated": "2025-10-21 16:16:00 US/Eastern",
+                "top_gainers": [
+                    {
+                        "ticker": "BYND",
+                        "price": "3.62",
+                        "change_amount": "2.15",
+                        "change_percentage": "146.2585%",
+                        "volume": "1812070328"
+                    }
+                ],
+                "top_losers": [],
+                "most_actively_traded": []
+            }
+        }
