@@ -535,10 +535,10 @@ async function renderDetailCandlestickChart() {
         if (candleParam && candleParam.data && Array.isArray(candleParam.data)) {
           const candleValue = candleParam.data
           tooltip += `<div style="font-weight: bold; margin-bottom: 5px;">${candleParam.name}</div>`
-          tooltip += `<div>시가: $${candleValue[0].toFixed(2)}</div>`
-          tooltip += `<div>종가: $${candleValue[1].toFixed(2)}</div>`
-          tooltip += `<div>최저: $${candleValue[2].toFixed(2)}</div>`
-          tooltip += `<div>최고: $${candleValue[3].toFixed(2)}</div>`
+          tooltip += `<div>시가: $${candleValue[1].toFixed(2)}</div>`
+          tooltip += `<div>종가: $${candleValue[2].toFixed(2)}</div>`
+          tooltip += `<div>최저: $${candleValue[3].toFixed(2)}</div>`
+          tooltip += `<div>최고: $${candleValue[4].toFixed(2)}</div>`
         }
         
         // Volume data
