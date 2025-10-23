@@ -262,3 +262,76 @@ class TestGetChartData:
         response = client.get("/api/v1/stocks/AAPL/chart")
         
         assert response.status_code == 422  # Validation error
+
+
+class TestGetTopMovers:
+    """Tests for GET /api/v1/stocks/market/top-movers endpoint."""
+    
+    @patch('src.services.stock_data_service.StockDataService.get_top_movers')
+    def test_get_top_movers_success(self, mock_get_top_movers, client: TestClient):
+        """Test getting top movers successfully."""
+        # Mock Alpha Vantage response
+        mock_get_top_movers.return_value = {
+            'metadata': 'Top gainers, losers, and most actively traded US tickers',
+            'last_updated': '2025-10-21 16:16:00 US/Eastern',
+            'top_gainers': [
+                {
+                    'ticker': 'BYND',
+                    'price': '3.62',
+                    'change_amount': '2.15',
+                    'change_percentage': '146.2585%',
+                    'volume': '1812070328'
+                },
+                {
+                    'ticker': 'TEST',
+                    'price': '10.50',
+                    'change_amount': '5.00',
+                    'change_percentage': '90.9091%',
+                    'volume': '500000000'
+                }
+            ],
+            'top_losers': [
+                {
+                    'ticker': 'RGTU',
+                    'price': '72.89',
+                    'change_amount': '-185.11',
+                    'change_percentage': '-71.7174%',
+                    'volume': '50000000'
+                }
+            ],
+            'most_actively_traded': [
+                {
+                    'ticker': 'AAPL',
+                    'price': '175.50',
+                    'change_amount': '2.00',
+                    'change_percentage': '1.1527%',
+                    'volume': '80000000'
+                }
+            ]
+        }
+        
+        response = client.get("/api/v1/stocks/market/top-movers")
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data['metadata'] == 'Top gainers, losers, and most actively traded US tickers'
+        assert data['last_updated'] == '2025-10-21 16:16:00 US/Eastern'
+        assert len(data['top_gainers']) == 2
+        assert len(data['top_losers']) == 1
+        assert len(data['most_actively_traded']) == 1
+        
+        # Verify first gainer
+        assert data['top_gainers'][0]['ticker'] == 'BYND'
+        assert data['top_gainers'][0]['price'] == '3.62'
+        assert data['top_gainers'][0]['change_percentage'] == '146.2585%'
+    
+    @patch('src.services.stock_data_service.StockDataService.get_top_movers')
+    def test_get_top_movers_service_unavailable(self, mock_get_top_movers, client: TestClient):
+        """Test top movers when service returns None."""
+        mock_get_top_movers.return_value = None
+        
+        response = client.get("/api/v1/stocks/market/top-movers")
+        
+        assert response.status_code == 503
+        assert "unavailable" in response.json()["detail"].lower()
