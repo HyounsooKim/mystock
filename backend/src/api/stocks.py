@@ -34,6 +34,47 @@ router = APIRouter()
 stock_service = StockDataService()
 
 
+@router.get("/top-movers", response_model=TopMoversResponse)
+async def get_top_movers():
+    """Get current market top movers (gainers, losers, most active).
+    
+    Fetches data from Alpha Vantage TOP_GAINERS_LOSERS endpoint.
+    Data is cached for 4 hours to minimize API calls.
+    
+    Returns:
+        TopMoversResponse: Contains three lists with stock data
+        
+    Raises:
+        HTTPException(503): Service unavailable (API error)
+        HTTPException(429): Too many requests (rate limit)
+    """
+    try:
+        data = top_movers_service.get_top_movers()
+        
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to fetch top movers data. Please try again later."
+            )
+        
+        return TopMoversResponse(
+            metadata=data.get('metadata', ''),
+            last_updated=data.get('last_updated', ''),
+            top_gainers=data.get('top_gainers', []),
+            top_losers=data.get('top_losers', []),
+            most_actively_traded=data.get('most_actively_traded', [])
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_top_movers endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while fetching top movers"
+        )
+
+
 @router.get("/{symbol}", response_model=StockQuoteResponse)
 async def get_stock_quote(symbol: str):
     """Get stock quote directly from Alpha Vantage API (no caching).
@@ -174,44 +215,3 @@ async def get_stock_news(
         news=news_items,
         total=len(news_items)
     )
-
-
-@router.get("/top-movers", response_model=TopMoversResponse)
-async def get_top_movers():
-    """Get current market top movers (gainers, losers, most active).
-    
-    Fetches data from Alpha Vantage TOP_GAINERS_LOSERS endpoint.
-    Data is cached for 4 hours to minimize API calls.
-    
-    Returns:
-        TopMoversResponse: Contains three lists with stock data
-        
-    Raises:
-        HTTPException(503): Service unavailable (API error)
-        HTTPException(429): Too many requests (rate limit)
-    """
-    try:
-        data = top_movers_service.get_top_movers()
-        
-        if not data:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Unable to fetch top movers data. Please try again later."
-            )
-        
-        return TopMoversResponse(
-            metadata=data.get('metadata', ''),
-            last_updated=data.get('last_updated', ''),
-            top_gainers=data.get('top_gainers', []),
-            top_losers=data.get('top_losers', []),
-            most_actively_traded=data.get('most_actively_traded', [])
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in get_top_movers endpoint: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error while fetching top movers"
-        )
