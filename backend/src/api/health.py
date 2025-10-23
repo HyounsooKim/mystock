@@ -18,7 +18,7 @@ async def health_check(container = Depends(get_db)):
     Returns:
         Health status including timestamp and database connectivity
         
-    Raises:
+    Raises: 
         HTTPException: If database connection fails
     """
     try:

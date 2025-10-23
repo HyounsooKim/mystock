@@ -5,7 +5,7 @@
         <div class="empty-header">404</div>
         <p class="empty-title">페이지를 찾을 수 없습니다</p>
         <p class="empty-subtitle text-muted">
-          요청하신 페이지가 존재하지 않거나 삭제되었습니다.
+          요청하신 페이지가 존재하지 않거나 삭제되었습니다. 
         </p>
         <div class="empty-action">
           <router-link to="/" class="btn btn-primary">
