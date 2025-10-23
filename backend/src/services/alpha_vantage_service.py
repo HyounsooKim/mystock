@@ -5,9 +5,10 @@ Provides functions to fetch stock quotes and candlestick data from Alpha Vantage
 
 import requests
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import os
+import time
 
 from src.schemas.stocks import MarketEnum as Market, MarketStatusEnum as MarketStatus, PeriodEnum as Period
 # from src.models.stock_quote import Market, MarketStatus
@@ -29,6 +30,9 @@ class AlphaVantageService:
             api_key: Alpha Vantage API key. If not provided, reads from env.
         """
         self.api_key = api_key or os.getenv('ALPHA_VANTAGE_API_KEY', 'XONR2H0Y7T34GNF4')
+        self._top_movers_cache = None
+        self._top_movers_cache_time = None
+        self._cache_ttl = int(os.getenv('TOP_MOVERS_CACHE_TTL', 900))  # 15 minutes default
     
     def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Fetch current stock quote from Alpha Vantage.
@@ -207,6 +211,134 @@ class AlphaVantageService:
         except Exception as e:
             logger.error(f"Error fetching candlestick data for {symbol}: {str(e)}")
             return None
+    
+    def get_top_movers(self) -> Optional[Dict[str, Any]]:
+        """Fetch top gainers, losers, and most actively traded stocks.
+        
+        Uses Alpha Vantage TOP_GAINERS_LOSERS endpoint with caching.
+        Cache TTL: 15 minutes (configurable via TOP_MOVERS_CACHE_TTL env var).
+        
+        Returns:
+            Dictionary with three lists:
+            {
+                'top_gainers': [...],
+                'top_losers': [...],
+                'most_actively_traded': [...],
+                'last_updated': 'ISO timestamp'
+            }
+            or None if fetch fails
+        
+        Example item structure:
+            {
+                'ticker': 'AAPL',
+                'price': '175.50',
+                'change_amount': '2.15',
+                'change_percentage': '1.24%',
+                'volume': '50000000'
+            }
+        """
+        try:
+            # Check cache first
+            if self._is_cache_valid():
+                logger.debug("Returning cached top movers data")
+                return self._top_movers_cache
+            
+            # Fetch fresh data
+            params = {
+                'function': 'TOP_GAINERS_LOSERS',
+                'apikey': self.api_key
+            }
+            
+            logger.info("Fetching top movers from Alpha Vantage API")
+            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check for errors
+            if 'Error Message' in data:
+                logger.error(f"Alpha Vantage error fetching top movers: {data['Error Message']}")
+                return None
+            
+            if 'Note' in data:
+                logger.warning(f"Alpha Vantage API limit reached: {data['Note']}")
+                # Return cached data if available
+                if self._top_movers_cache:
+                    logger.info("Returning stale cached data due to rate limit")
+                    return self._top_movers_cache
+                return None
+            
+            # Validate response structure
+            if not all(key in data for key in ['top_gainers', 'top_losers', 'most_actively_traded']):
+                logger.error(f"Invalid top movers response structure: {data.keys()}")
+                return None
+            
+            # Parse and structure the data
+            result = {
+                'top_gainers': self._parse_movers_list(data.get('top_gainers', [])),
+                'top_losers': self._parse_movers_list(data.get('top_losers', [])),
+                'most_actively_traded': self._parse_movers_list(data.get('most_actively_traded', [])),
+                'last_updated': data.get('last_updated', datetime.utcnow().isoformat())
+            }
+            
+            # Update cache
+            self._top_movers_cache = result
+            self._top_movers_cache_time = time.time()
+            
+            logger.info(f"Successfully fetched top movers: {len(result['top_gainers'])} gainers, "
+                       f"{len(result['top_losers'])} losers, "
+                       f"{len(result['most_actively_traded'])} most active")
+            
+            return result
+            
+        except requests.exceptions.Timeout:
+            logger.error("Timeout fetching top movers from Alpha Vantage")
+            return self._top_movers_cache  # Return cached data if available
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching top movers: {str(e)}")
+            return self._top_movers_cache  # Return cached data if available
+        except (ValueError, KeyError) as e:
+            logger.error(f"Error parsing top movers data: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error fetching top movers: {str(e)}")
+            return None
+    
+    def _is_cache_valid(self) -> bool:
+        """Check if cached top movers data is still valid.
+        
+        Returns:
+            True if cache exists and is within TTL, False otherwise
+        """
+        if self._top_movers_cache is None or self._top_movers_cache_time is None:
+            return False
+        
+        age = time.time() - self._top_movers_cache_time
+        return age < self._cache_ttl
+    
+    def _parse_movers_list(self, movers: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """Parse and validate a list of movers from API response.
+        
+        Args:
+            movers: List of mover dictionaries from API
+            
+        Returns:
+            Parsed list of movers (max 20 items)
+        """
+        parsed = []
+        for mover in movers[:20]:  # Limit to 20 items
+            try:
+                parsed.append({
+                    'ticker': mover.get('ticker', ''),
+                    'price': mover.get('price', '0'),
+                    'change_amount': mover.get('change_amount', '0'),
+                    'change_percentage': mover.get('change_percentage', '0%'),
+                    'volume': mover.get('volume', '0')
+                })
+            except (KeyError, ValueError) as e:
+                logger.warning(f"Error parsing mover item: {str(e)}")
+                continue
+        
+        return parsed
     
     def search_symbol(self, keywords: str) -> Optional[List[Dict[str, Any]]]:
         """Search for stock symbols using Alpha Vantage.

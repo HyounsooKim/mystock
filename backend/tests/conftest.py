@@ -7,9 +7,20 @@ The existing SQLAlchemy-based tests will not work with Cosmos DB.
 import pytest
 from typing import Generator
 from fastapi.testclient import TestClient
+from unittest.mock import patch, MagicMock
 
 from src.main import app
 from src.core.security import create_access_token
+
+
+@pytest.fixture(scope="function", autouse=True)
+def mock_cosmos_db():
+    """Mock Cosmos DB initialization for all tests."""
+    with patch('src.core.database.initialize_cosmos_db') as mock_init:
+        with patch('src.core.database.close_cosmos_client') as mock_close:
+            mock_init.return_value = None
+            mock_close.return_value = None
+            yield
 
 
 @pytest.fixture(scope="function")
