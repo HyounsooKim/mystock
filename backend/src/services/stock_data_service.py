@@ -6,7 +6,7 @@ Provides functions to fetch stock quotes and candlestick data from Alpha Vantage
 import requests
 import os
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 from src.schemas.stocks import MarketEnum as Market, MarketStatusEnum as MarketStatus, PeriodEnum as Period

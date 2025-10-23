@@ -3,12 +3,9 @@
 Handles stock quote retrieval and candlestick chart data without caching (Cosmos DB migration).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from datetime import datetime, timedelta
-from typing import Optional
+from fastapi import APIRouter, HTTPException, status, Query
+from datetime import datetime
 
-from src.core.database import get_db
-from src.core.config import settings
 # Legacy SQLAlchemy models (commented out for Cosmos DB migration)
 # from src.models import StockQuote, CandlestickData
 # from src.models.stock_quote import MarketStatus, Market
