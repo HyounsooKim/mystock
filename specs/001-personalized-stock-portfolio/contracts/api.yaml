@@ -398,6 +398,37 @@ paths:
                     example: 5
                     description: Number of quotes fetched from yfinance
 
+  /stocks/top-movers:
+    get:
+      tags: [stock]
+      summary: Get top movers (급등락 종목)
+      description: |
+        Retrieve top gaining stocks, top losing stocks, and most actively traded stocks.
+        Data is cached for 15 minutes to reduce API calls to Alpha Vantage.
+        
+        **Feature**: 002-top-movers-feature
+      responses:
+        '200':
+          description: Top movers retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopMoversResponse'
+        '503':
+          description: Service unavailable (Alpha Vantage API error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Unable to fetch top movers data. Please try again later."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # ==================== Portfolio ====================
   /portfolio:
     get:
@@ -855,6 +886,69 @@ components:
           type: string
           format: date-time
           example: "2025-10-21T12:30:00Z"
+
+    # ========== Top Movers Schemas ==========
+    StockMover:
+      type: object
+      required:
+        - ticker
+        - price
+        - change_amount
+        - change_percentage
+        - volume
+      properties:
+        ticker:
+          type: string
+          example: "AAPL"
+          description: Stock ticker symbol
+        price:
+          type: string
+          example: "175.50"
+          description: Current stock price
+        change_amount:
+          type: string
+          example: "5.25"
+          description: Price change amount (can be negative)
+        change_percentage:
+          type: string
+          example: "3.09%"
+          description: Price change percentage (includes % sign)
+        volume:
+          type: string
+          example: "52000000"
+          description: Trading volume
+
+    TopMoversResponse:
+      type: object
+      required:
+        - top_gainers
+        - top_losers
+        - most_actively_traded
+        - last_updated
+      properties:
+        top_gainers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/StockMover'
+          description: Top gaining stocks (up to 20)
+        top_losers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/StockMover'
+          description: Top losing stocks (up to 20)
+        most_actively_traded:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/StockMover'
+          description: Most actively traded stocks (up to 20)
+        last_updated:
+          type: string
+          format: date-time
+          example: "2025-10-23T07:00:00Z"
+          description: Last update timestamp (ISO 8601)
 
     # ========== Error Schemas ==========
     Error:
