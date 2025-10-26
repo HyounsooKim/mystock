@@ -48,6 +48,7 @@ test_function.py
 # Deployment parameters with secrets
 infra/parameters*.json
 !infra/parameters.template.json
+infra/azure-credentials.json
 
 # PyTest
 .pytest_cache/
