@@ -28,10 +28,26 @@ share/python-wheels/
 MANIFEST
 
 # Virtual environments
+.venv/
 venv/
 ENV/
 env/
-.venv
+
+# Azure Functions
+local.settings.json
+.python_packages/
+__pycache__/
+*.pyc
+
+# Temporary verification files
+*_VERIFICATION.md
+check_python_version.py
+verify_python_config.py
+test_function.py
+
+# Deployment parameters with secrets
+infra/parameters*.json
+!infra/parameters.template.json
 
 # PyTest
 .pytest_cache/
@@ -147,7 +163,7 @@ pnpm-debug.log*
 # IDE & Editors
 # ============================================================================
 # VSCode
-.vscode/
+
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json

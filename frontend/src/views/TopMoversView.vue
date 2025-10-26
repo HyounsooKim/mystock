@@ -2,7 +2,6 @@
   <AppLayout
     page-title="급등락 종목들"
     page-subtitle="Top Market Movers"
-    :full-width="true"
   >
     <!-- Error Alert -->
     <div v-if="error" class="alert alert-danger alert-dismissible" role="alert">
@@ -47,7 +46,7 @@
         <TopMoversList
           :stocks="topGainers"
           type="gainers"
-          title="상승 상위"
+          title="급등 종목"
         />
       </div>
 
@@ -56,7 +55,7 @@
         <TopMoversList
           :stocks="topLosers"
           type="losers"
-          title="하락 상위"
+          title="급락 종목"
         />
       </div>
 

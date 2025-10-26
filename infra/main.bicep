@@ -110,11 +110,31 @@ module staticWebApp 'modules/staticwebapp.bicep' = {
   }
 }
 
+// Module: Azure Functions (Top Movers Updater)
+module functions 'modules/functions.bicep' = {
+  name: 'functions-deployment'
+  scope: rg
+  params: {
+    location: location
+    appName: appName
+    environmentName: environmentName
+    tags: tags
+    logAnalyticsWorkspaceId: monitoring.outputs.workspaceId
+    appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
+    cosmosDbEndpoint: cosmosDb.outputs.endpoint
+    cosmosDbKey: cosmosDb.outputs.primaryKey
+    cosmosDbDatabaseName: cosmosDb.outputs.databaseName
+    alphaVantageApiKey: alphaVantageApiKey
+  }
+}
+
 // Outputs
 output resourceGroupName string = rg.name
 output cosmosDbEndpoint string = cosmosDb.outputs.endpoint
 output cosmosDbDatabaseName string = cosmosDb.outputs.databaseName
 output backendUrl string = containerApps.outputs.backendUrl
 output frontendUrl string = staticWebApp.outputs.staticWebAppUrl
+output functionAppName string = functions.outputs.functionAppName
+output functionAppUrl string = 'https://${functions.outputs.functionAppDefaultHostName}'
 output logAnalyticsWorkspaceId string = monitoring.outputs.workspaceId
 output applicationInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString

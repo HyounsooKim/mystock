@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 _cosmos_client: Optional[CosmosClient] = None
 _database = None
 _container = None
+_top_movers_container = None
 
 
 def get_cosmos_client() -> CosmosClient:
@@ -75,6 +76,22 @@ def get_container():
     return _container
 
 
+def get_top_movers_container():
+    """Get or create Cosmos DB container instance for top movers data.
+    
+    Returns:
+        ContainerProxy: Cosmos DB container instance for top movers
+    """
+    global _top_movers_container
+    
+    if _top_movers_container is None:
+        database = get_database()
+        _top_movers_container = database.get_container_client("top_movers")
+        logger.info("Connected to container: top_movers")
+    
+    return _top_movers_container
+
+
 def initialize_cosmos_db():
     """Initialize Cosmos DB database and container if they don't exist.
     
@@ -104,6 +121,19 @@ def initialize_cosmos_db():
         logger.error(f"Error creating container: {e}")
         raise
     
+    # Create top_movers container if it doesn't exist
+    # Partition key: /date (each date is a separate partition)
+    try:
+        top_movers_container = database.create_container_if_not_exists(
+            id="top_movers",
+            partition_key=PartitionKey(path="/date"),
+            offer_throughput=400  # 400 RU/s
+        )
+        logger.info("Container ready: top_movers with partition key /date")
+    except exceptions.CosmosHttpResponseError as e:
+        logger.error(f"Error creating top_movers container: {e}")
+        raise
+    
     return container
 
 
@@ -112,7 +142,7 @@ def close_cosmos_client():
     
     Should be called during application shutdown.
     """
-    global _cosmos_client, _database, _container
+    global _cosmos_client, _database, _container, _top_movers_container
     
     if _cosmos_client is not None:
         # CosmosClient doesn't have close() method
@@ -120,6 +150,7 @@ def close_cosmos_client():
         _cosmos_client = None
         _database = None
         _container = None
+        _top_movers_container = None
         logger.info("Cosmos DB client closed")
 
 

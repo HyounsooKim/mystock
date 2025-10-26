@@ -1,0 +1,82 @@
+name: Deploy Azure Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/functions/**'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_FUNCTIONAPP_NAME: 'func-mystock-topmovers-dev'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'backend/functions'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: Setup Python ${{ env.PYTHON_VERSION }} Environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 'Validate Function App Structure'
+      shell: bash
+      run: |
+        echo "Validating Azure Functions project structure..."
+        if [ ! -f "./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/function_app.py" ]; then
+          echo "Error: function_app.py not found"
+          exit 1
+        fi
+        if [ ! -f "./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/host.json" ]; then
+          echo "Error: host.json not found"
+          exit 1
+        fi
+        if [ ! -f "./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/requirements.txt" ]; then
+          echo "Error: requirements.txt not found"
+          exit 1
+        fi
+        echo "✓ All required files present"
+
+    - name: 'Resolve Project Dependencies Using Pip'
+      shell: bash
+      run: |
+        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt --target="./.python_packages/lib/site-packages"
+        popd
+
+    - name: 'Run Azure Functions Action'
+      uses: Azure/functions-action@v1
+      id: deploy-function
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+        scm-do-build-during-deployment: false
+        enable-oryx-build: true
+
+    - name: 'Deployment Summary'
+      shell: bash
+      run: |
+        echo "### Deployment Summary :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Function App:** ${{ env.AZURE_FUNCTIONAPP_NAME }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Python Version:** ${{ env.PYTHON_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployed At:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### Function App URLs" >> $GITHUB_STEP_SUMMARY
+        echo "- **App URL:** https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
+        echo "- **Kudu (SCM):** https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check [Azure Portal](https://portal.azure.com) for function status" >> $GITHUB_STEP_SUMMARY
+        echo "2. Monitor logs in Application Insights" >> $GITHUB_STEP_SUMMARY
+        echo "3. Verify Cosmos DB data updates" >> $GITHUB_STEP_SUMMARY

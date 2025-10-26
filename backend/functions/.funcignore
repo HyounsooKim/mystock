@@ -1,0 +1,33 @@
+# Python virtual environment
+.venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local development
+.env
+local.settings.json
+.python_packages/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+test_*.py
+tests/
+*.pytest_cache
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+DEPLOYMENT.md
+
+# Azure Functions v1 artifacts (not needed for v2)
+TopMoversUpdater/

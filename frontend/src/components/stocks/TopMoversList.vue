@@ -16,11 +16,26 @@
           <thead>
             <tr>
               <th class="w-1">#</th>
-              <th>티커</th>
-              <th class="text-end">가격</th>
-              <th class="text-end">변화</th>
-              <th class="text-end">변화율</th>
-              <th class="text-end">거래량</th>
+              <th class="sortable-header" @click="toggleSort('ticker')">
+                티커
+                <i v-if="sortKey === 'ticker'" :class="sortIcon" class="ms-1"></i>
+              </th>
+              <th class="text-end sortable-header" @click="toggleSort('price')">
+                가격
+                <i v-if="sortKey === 'price'" :class="sortIcon" class="ms-1"></i>
+              </th>
+              <th class="text-end sortable-header" @click="toggleSort('change_amount')">
+                변화
+                <i v-if="sortKey === 'change_amount'" :class="sortIcon" class="ms-1"></i>
+              </th>
+              <th class="text-end sortable-header" @click="toggleSort('change_percentage')">
+                변화율
+                <i v-if="sortKey === 'change_percentage'" :class="sortIcon" class="ms-1"></i>
+              </th>
+              <th class="text-end sortable-header" @click="toggleSort('volume')">
+                거래량
+                <i v-if="sortKey === 'volume'" :class="sortIcon" class="ms-1"></i>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -41,7 +56,7 @@
                 {{ formatChange(stock.change_amount) }}
               </td>
               <td class="text-end" :class="getChangeClass(stock.change_amount)">
-                <strong>{{ stock.change_percentage }}</strong>
+                <strong>{{ formatPercentage(stock.change_percentage) }}</strong>
               </td>
               <td class="text-end text-muted">
                 {{ formatVolume(stock.volume) }}
@@ -55,7 +70,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -80,6 +95,10 @@ const props = defineProps({
     default: 20
   }
 })
+
+// Sorting state
+const sortKey = ref(null)
+const sortOrder = ref('asc') // 'asc' or 'desc'
 
 const headerClass = computed(() => {
   switch (props.type) {
@@ -107,16 +126,73 @@ const iconClass = computed(() => {
   }
 })
 
+const sortIcon = computed(() => {
+  return sortOrder.value === 'asc' ? 'ti ti-arrow-up' : 'ti ti-arrow-down'
+})
+
+const sortedStocks = computed(() => {
+  if (!sortKey.value) {
+    return props.stocks
+  }
+
+  const sorted = [...props.stocks].sort((a, b) => {
+    let aVal, bVal
+
+    switch (sortKey.value) {
+      case 'ticker':
+        aVal = a.ticker
+        bVal = b.ticker
+        break
+      case 'price':
+        aVal = parseFloat(a.price)
+        bVal = parseFloat(b.price)
+        break
+      case 'change_amount':
+        aVal = parseFloat(a.change_amount)
+        bVal = parseFloat(b.change_amount)
+        break
+      case 'change_percentage':
+        aVal = parseFloat(String(a.change_percentage).replace('%', ''))
+        bVal = parseFloat(String(b.change_percentage).replace('%', ''))
+        break
+      case 'volume':
+        aVal = parseInt(a.volume)
+        bVal = parseInt(b.volume)
+        break
+      default:
+        return 0
+    }
+
+    if (sortKey.value === 'ticker') {
+      // String comparison
+      if (sortOrder.value === 'asc') {
+        return aVal.localeCompare(bVal)
+      } else {
+        return bVal.localeCompare(aVal)
+      }
+    } else {
+      // Numeric comparison
+      if (sortOrder.value === 'asc') {
+        return aVal - bVal
+      } else {
+        return bVal - aVal
+      }
+    }
+  })
+
+  return sorted
+})
+
 const displayedStocks = computed(() => {
-  return props.stocks.slice(0, props.maxItems)
+  return sortedStocks.value.slice(0, props.maxItems)
 })
 
 function formatPrice(price) {
   const numPrice = parseFloat(price)
   if (numPrice >= 1) {
-    return numPrice.toFixed(2)
+    return numPrice.toFixed(3)
   }
-  return numPrice.toFixed(4)
+  return numPrice.toFixed(3)
 }
 
 function formatChange(change) {
@@ -125,6 +201,25 @@ function formatChange(change) {
     return `+${numChange.toFixed(2)}`
   }
   return numChange.toFixed(2)
+}
+
+function formatPercentage(percentage) {
+  // Remove '%' if present and parse as float
+  const percentStr = String(percentage).replace('%', '')
+  const numPercent = parseFloat(percentStr)
+  if (isNaN(numPercent)) {
+    return percentage
+  }
+  return `${numPercent.toFixed(2)}%`
+}
+
+function toggleSort(key) {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
 }
 
 function formatVolume(volume) {
@@ -165,6 +260,26 @@ function navigateToStock(ticker) {
 
 [data-bs-theme="dark"] .cursor-pointer:hover {
   background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.sortable-header:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+[data-bs-theme="dark"] .sortable-header:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sortable-header i {
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  vertical-align: middle;
 }
 
 .ticker-symbol {

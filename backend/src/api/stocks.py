@@ -24,7 +24,8 @@ from src.schemas.stocks import (
     TopMoversResponse,
 )
 from src.services.stock_data_service import StockDataService
-from src.services.top_movers_service import top_movers_service
+# Use Cosmos DB-based top movers service
+from src.services.top_movers_service_cosmosdb import top_movers_service
 
 
 logger = logging.getLogger(__name__)
