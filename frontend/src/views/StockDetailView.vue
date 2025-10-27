@@ -1,5 +1,5 @@
 <template>
-  <app-layout :page-title="`${symbol} 관련 뉴스`" page-subtitle="주식 정보">
+  <app-layout :page-title="`${symbol} - ${companyName}`" page-subtitle="주식 정보">
     <div class="row row-deck row-cards">
 
         <!-- News Section -->
@@ -214,14 +214,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import apiClient from '@/api/client'
 import * as echarts from 'echarts'
+import { getCompanyNameSync } from '@/utils/symbolLookup'
 
 const route = useRoute()
 const symbol = route.params.symbol
+
+// Get company name for the symbol
+const companyName = computed(() => getCompanyNameSync(symbol))
 
 const news = ref([])
 const loading = ref(false)

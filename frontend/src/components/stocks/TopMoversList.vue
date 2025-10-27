@@ -20,6 +20,7 @@
                 티커
                 <i v-if="sortKey === 'ticker'" :class="sortIcon" class="ms-1"></i>
               </th>
+              <th>회사명</th>
               <th class="text-end sortable-header" @click="toggleSort('price')">
                 가격
                 <i v-if="sortKey === 'price'" :class="sortIcon" class="ms-1"></i>
@@ -49,6 +50,9 @@
               <td>
                 <strong class="ticker-symbol">{{ stock.ticker }}</strong>
               </td>
+              <td>
+                <span class="text-muted">{{ getCompanyNameSync(stock.ticker) }}</span>
+              </td>
               <td class="text-end">
                 <span class="price-value">${{ formatPrice(stock.price) }}</span>
               </td>
@@ -72,6 +76,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getCompanyNameSync } from '@/utils/symbolLookup'
 
 const router = useRouter()
 

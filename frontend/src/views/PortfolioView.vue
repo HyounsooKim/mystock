@@ -159,7 +159,7 @@
                         </router-link>
                       </td>
                       <td>
-                        <div class="text-muted">{{ holding.company_name || holding.symbol }}</div>
+                        <div class="text-muted">{{ getCompanyNameSync(holding.symbol) }}</div>
                       </td>
                       <td class="text-end">{{ holding.quantity }}</td>
                       <td class="text-end">{{ formatCurrency(holding.avg_price, holding.symbol) }}</td>
@@ -316,6 +316,7 @@ import { ref, computed, onMounted } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolio'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import PortfolioTreemap from '@/components/portfolio/PortfolioTreemap.vue'
+import { getCompanyNameSync } from '@/utils/symbolLookup'
 
 const portfolioStore = usePortfolioStore()
 

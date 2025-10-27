@@ -87,10 +87,9 @@
                       </router-link>
                     </td>
                     <td>
-                      <span v-if="item.company_name" class="text-muted">
-                        {{ item.company_name }}
+                      <span class="text-muted">
+                        {{ getCompanyNameSync(item.symbol) }}
                       </span>
-                      <span v-else class="text-muted">-</span>
                     </td>
                     <td>
                       <div 
@@ -266,11 +265,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { useWatchlistStore } from '@/stores/watchlist'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import * as echarts from 'echarts'
 import apiClient from '@/api/client'
+import { getCompanyNameSync } from '@/utils/symbolLookup'
 
 const watchlistStore = useWatchlistStore()
 

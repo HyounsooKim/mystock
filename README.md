@@ -11,6 +11,7 @@
 [Demo 접속](https://stock.hemtory.com/)  
 
 ## Architecture
+![아키텍처](./images/infra.png)  
 ```
 ┌────────────────────────────────────────────────────────┐
 │ GitHub Repository                                      │

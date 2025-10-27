@@ -5,12 +5,20 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { preloadSymbolData } from '@/utils/symbolLookup'
 
 const authStore = useAuthStore()
 
 // Initialize auth from localStorage on app mount
-onMounted(() => {
+onMounted(async () => {
   authStore.initializeAuth()
+  
+  // Preload symbol data for company name lookups
+  try {
+    await preloadSymbolData()
+  } catch (error) {
+    console.error('Failed to preload symbol data:', error)
+  }
 })
 </script>
 
