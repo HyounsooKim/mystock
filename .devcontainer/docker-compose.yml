@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Main development container
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - venv:/workspace/backend/.venv
+      - node_modules:/workspace/frontend/node_modules
+      - func_venv:/workspace/backend/functions/.venv
+    command: sleep infinity
+    network_mode: service:cosmos-emulator
+    environment:
+      # Cosmos DB Emulator connection
+      - COSMOS_ENDPOINT=https://cosmos-emulator:8081
+      - COSMOS_KEY=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
+      - COSMOS_DATABASE_NAME=mystock
+      - COSMOS_CONTAINER_NAME=users
+      # Alpha Vantage (user needs to set their own key)
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY:-demo}
+      - ALPHA_VANTAGE_USE_DELAYED=true
+      # JWT
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRATION_MINUTES=10080
+      # CORS
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:3000","https://*.githubpreview.dev","https://*.github.dev"]
+      # Azure Functions
+      - AzureWebJobsStorage=UseDevelopmentStorage=true
+      - FUNCTIONS_WORKER_RUNTIME=python
+    depends_on:
+      cosmos-emulator:
+        condition: service_healthy
+      azurite:
+        condition: service_healthy
+
+  # Cosmos DB Emulator
+  cosmos-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    tty: true
+    restart: always
+    mem_limit: 3g
+    cpu_count: 2
+    environment:
+      - AZURE_COSMOS_EMULATOR_PARTITION_COUNT=10
+      - AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true
+      - AZURE_COSMOS_EMULATOR_IP_ADDRESS_OVERRIDE=127.0.0.1
+    ports:
+      - "8081:8081"
+      - "10251:10251"
+      - "10252:10252"
+      - "10253:10253"
+      - "10254:10254"
+    volumes:
+      - cosmos-data:/tmp/cosmos/appdata
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost:8081/_explorer/emulator.pem"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Azurite - Azure Storage Emulator
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    restart: always
+    command: "azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --silent"
+    ports:
+      - "10000:10000"  # Blob service
+      - "10001:10001"  # Queue service
+      - "10002:10002"  # Table service
+    volumes:
+      - azurite-data:/data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "10000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  venv:
+  node_modules:
+  func_venv:
+  cosmos-data:
+  azurite-data:

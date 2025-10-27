@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Backend (FastAPI)",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/backend && source .venv/bin/activate && uvicorn src.main:app --reload --host 0.0.0.0 --port 8000",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-servers"
+      },
+      "isBackground": true,
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Start Frontend (Vite)",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/frontend && npm run dev",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-servers"
+      },
+      "isBackground": true,
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Start Azure Functions",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/backend/functions && source .venv/bin/activate && func start --verbose",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-servers"
+      },
+      "isBackground": true,
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Start All Services",
+      "dependsOn": [
+        "Start Backend (FastAPI)",
+        "Start Frontend (Vite)"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Test: Backend",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/backend && source .venv/bin/activate && pytest -v",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Test: Frontend",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/frontend && npm run test",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Initialize Cosmos DB",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/backend && source .venv/bin/activate && python init_cosmos.py",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

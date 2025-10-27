@@ -1,0 +1,131 @@
+{
+  "name": "MyStock Development Environment",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "nodeGypDependencies": true
+    },
+    "ghcr.io/devcontainers/features/azure-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/azure/azure-dev/azd:latest": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Python
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+        
+        // Vue/Frontend
+        "Vue.volar",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        
+        // Azure
+        "ms-azuretools.vscode-azurefunctions",
+        "ms-azuretools.vscode-cosmosdb",
+        "ms-azuretools.azure-dev",
+        
+        // Git
+        "github.vscode-pull-request-github",
+        "github.copilot",
+        "github.copilot-chat",
+        
+        // Tools
+        "ms-vscode.vscode-node-azure-pack",
+        "humao.rest-client",
+        "rangav.vscode-thunder-client"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/backend/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[vue]": {
+          "editor.defaultFormatter": "Vue.volar"
+        },
+        "azure.cosmos.emulator.endpoint": "https://cosmos-emulator:8081",
+        "azureFunctions.deploySubpath": "backend/functions",
+        "azureFunctions.projectRuntime": "~4",
+        "azureFunctions.projectLanguage": "Python"
+      }
+    }
+  },
+
+  "forwardPorts": [
+    8081,   // Cosmos DB Emulator
+    8000,   // Backend FastAPI
+    5173,   // Frontend Vite dev server
+    7071,   // Azure Functions
+    10000,  // Azurite Blob
+    10001,  // Azurite Queue
+    10002   // Azurite Table
+  ],
+
+  "portsAttributes": {
+    "8081": {
+      "label": "Cosmos DB Emulator",
+      "protocol": "https",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "Backend API",
+      "protocol": "http",
+      "onAutoForward": "openBrowser"
+    },
+    "5173": {
+      "label": "Frontend Dev Server",
+      "protocol": "http",
+      "onAutoForward": "openPreview"
+    },
+    "7071": {
+      "label": "Azure Functions",
+      "protocol": "http",
+      "onAutoForward": "notify"
+    },
+    "10000": {
+      "label": "Azurite Blob",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    },
+    "10001": {
+      "label": "Azurite Queue",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    },
+    "10002": {
+      "label": "Azurite Table",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/cosmos-data,target=/tmp/cosmos/appdata,type=bind,consistency=cached"
+  ]
+}
