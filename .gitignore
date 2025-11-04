@@ -1,4 +1,4 @@
-# MyStock - Personalized Stock Portfolio App
+﻿# MyStock - Personalized Stock Portfolio App
 # Generated: 2025-10-21
 
 # ============================================================================
@@ -322,8 +322,9 @@ override.tf.json
 *.tar
 *.zip
 
-# ============================================================================
-# GitHub Codespaces
-# ============================================================================
-.devcontainer/cosmos-data/
-CODESPACES_GUIDE.md
+
+# Playwright test results
+playwright-report/
+test-results/
+**/playwright-report/
+**/test-results/
