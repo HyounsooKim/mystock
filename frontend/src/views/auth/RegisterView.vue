@@ -2,8 +2,10 @@
   <div class="page page-center">
     <div class="container container-tight py-4">
       <div class="text-center mb-4">
-        <h1 class="text-primary">MyStock</h1>
-        <p class="text-muted">나의 관심 주식</p>
+        <h1 class="text-primary">
+          <i class="ti ti-chart-candlestick me-2"></i>나의주식
+        </h1>
+        <p class="text-muted">개인 주식 포트폴리오 관리</p>
       </div>
       
       <form class="card card-md" @submit.prevent="handleRegister">
