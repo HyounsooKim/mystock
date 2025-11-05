@@ -8,8 +8,9 @@
         </button>
         
         <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-          <a href="/">
-            <span class="navbar-brand-text">MyStock</span>
+          <a href="/" class="d-flex align-items-center">
+            <i class="ti ti-chart-candlestick me-2"></i>
+            <span class="navbar-brand-text">나의주식</span>
           </a>
         </h1>
         
@@ -203,7 +204,7 @@ function handleLogout() {
   color: var(--tblr-primary);
 }
 
-/* Dark mode support for MyStock logo */
+/* Dark mode support for brand logo */
 [data-bs-theme="dark"] .navbar-brand-text {
   color: #fff;
 }
