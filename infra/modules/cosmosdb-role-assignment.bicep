@@ -8,10 +8,10 @@
 @description('Name of the Cosmos DB account')
 param cosmosAccountName string
 
-@description('Role definition ID (use built-in role IDs)')
+@description('Role definition ID as GUID (e.g., "00000000-0000-0000-0000-000000000002" for Data Contributor). Do not include the full resource path.')
 param roleDefinitionId string
 
-@description('Principal ID of the managed identity')
+@description('Principal ID of the managed identity (GUID)')
 param principalId string
 
 // Reference to existing Cosmos DB account

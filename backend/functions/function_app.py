@@ -50,10 +50,12 @@ def save_to_cosmos(data: dict):
     logger.info(f"Connecting to Cosmos DB: {endpoint}")
     
     # Determine if running locally based on endpoint
-    is_local = endpoint and ("localhost" in endpoint.lower() or "127.0.0.1" in endpoint)
+    is_local = bool(endpoint and ("localhost" in endpoint.lower() or "127.0.0.1" in endpoint))
     
     # Configure authentication credential
     try:
+        credential = None
+        
         if is_local:
             logger.warning("Detected localhost endpoint")
             # For local development, try key-based auth first
@@ -63,11 +65,12 @@ def save_to_cosmos(data: dict):
                 credential = key
             else:
                 logger.info("No COSMOS_KEY found, attempting Azure credential")
-                credential = DefaultAzureCredential()
-        else:
-            # Production: Use managed identity via DefaultAzureCredential
+        
+        # Use DefaultAzureCredential if no key-based credential was set
+        if credential is None:
             logger.info("Using managed identity authentication (DefaultAzureCredential)")
             credential = DefaultAzureCredential()
+            
     except Exception as e:
         logger.error(f"Failed to initialize Azure credentials: {e}")
         raise
