@@ -122,7 +122,6 @@ module functions 'modules/functions.bicep' = {
     logAnalyticsWorkspaceId: monitoring.outputs.workspaceId
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     cosmosDbEndpoint: cosmosDb.outputs.endpoint
-    cosmosDbKey: cosmosDb.outputs.primaryKey
     cosmosDbDatabaseName: cosmosDb.outputs.databaseName
     alphaVantageApiKey: alphaVantageApiKey
   }

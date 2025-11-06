@@ -8,6 +8,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
+from azure.identity import DefaultAzureCredential
 import aiohttp
 
 app = func.FunctionApp()
@@ -42,21 +43,29 @@ async def fetch_top_movers_from_api():
 
 
 def save_to_cosmos(data: dict):
-    """Save top movers data to Cosmos DB."""
+    """Save top movers data to Cosmos DB using Managed Identity."""
     endpoint = os.environ.get("COSMOS_ENDPOINT")
-    key = os.environ.get("COSMOS_KEY")
     database_name = os.environ.get("COSMOS_DATABASE_NAME")
     
     logger.info(f"Connecting to Cosmos DB: {endpoint}")
+    
+    # Use DefaultAzureCredential for managed identity authentication
+    # Falls back to environment variables, managed identity, etc.
+    credential = DefaultAzureCredential()
     
     connection_verify = True
     if "localhost" in endpoint or "127.0.0.1" in endpoint:
         logger.warning("Detected localhost endpoint - disabling SSL verification")
         connection_verify = False
+        # For local development, fall back to key-based auth if available
+        key = os.environ.get("COSMOS_KEY")
+        if key:
+            logger.warning("Using key-based authentication for local development")
+            credential = key
     
     client = CosmosClient(
         url=endpoint,
-        credential=key,
+        credential=credential,
         connection_verify=connection_verify
     )
     

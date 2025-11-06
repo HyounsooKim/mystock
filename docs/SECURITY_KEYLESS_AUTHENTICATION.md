@@ -104,6 +104,50 @@ module cosmosRoleAssignment 'modules/cosmosdb-role-assignment.bicep' = {
 }
 ```
 
+### 4. Function App 코드 변경
+
+#### function_app.py
+
+```python
+# 관리형 ID를 위한 라이브러리 추가
+from azure.identity import DefaultAzureCredential
+
+def save_to_cosmos(data: dict):
+    """Save top movers data to Cosmos DB using Managed Identity."""
+    endpoint = os.environ.get("COSMOS_ENDPOINT")
+    database_name = os.environ.get("COSMOS_DATABASE_NAME")
+    
+    # DefaultAzureCredential 사용 (관리형 ID 자동 인식)
+    credential = DefaultAzureCredential()
+    
+    # 로컬 개발 시에는 COSMOS_KEY 환경변수 사용 가능
+    if "localhost" in endpoint:
+        key = os.environ.get("COSMOS_KEY")
+        if key:
+            credential = key
+    
+    client = CosmosClient(
+        url=endpoint,
+        credential=credential,
+        connection_verify=True
+    )
+```
+
+#### requirements.txt
+
+```txt
+azure-functions
+azure-cosmos>=4.5.0
+azure-identity>=1.15.0  # 관리형 ID 지원
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
+```
+
+**주요 변경점:**
+- ✅ `COSMOS_KEY` 환경변수 제거 (Azure 배포 시)
+- ✅ `DefaultAzureCredential` 사용으로 자동 인증
+- ✅ 로컬 개발 시 key-based auth 폴백 지원
+
 ## 배포 방법
 
 ### 옵션 1: Bicep 템플릿으로 전체 배포 (권장)

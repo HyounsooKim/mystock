@@ -1,4 +1,5 @@
 azure-functions
 azure-cosmos>=4.5.0
+azure-identity>=1.15.0
 aiohttp>=3.9.0
 python-dotenv>=1.0.0

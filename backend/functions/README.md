@@ -81,6 +81,8 @@ pip install -r requirements.txt
 
 `local.settings.json` 파일을 수정하여 실제 API 키와 Cosmos DB 정보를 입력합니다:
 
+**⚠️ 로컬 개발 전용**: Azure 배포 시에는 관리형 ID를 사용하므로 `COSMOS_KEY`가 필요 없습니다.
+
 ```json
 {
   "IsEncrypted": false,
@@ -89,10 +91,32 @@ pip install -r requirements.txt
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "ALPHA_VANTAGE_API_KEY": "YOUR_ACTUAL_API_KEY",
     "COSMOS_ENDPOINT": "https://your-cosmos-account.documents.azure.com:443/",
-    "COSMOS_KEY": "YOUR_COSMOS_KEY",
+    "COSMOS_KEY": "YOUR_COSMOS_KEY",  // 로컬 개발용 (Azure 배포 시 자동 제거)
     "COSMOS_DATABASE_NAME": "mystock"
   }
 }
+```
+
+**Azure 인증 사용 (권장 - 로컬 개발):**
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "ALPHA_VANTAGE_API_KEY": "YOUR_ACTUAL_API_KEY",
+    "COSMOS_ENDPOINT": "https://your-cosmos-account.documents.azure.com:443/",
+    "COSMOS_DATABASE_NAME": "mystock"
+    // COSMOS_KEY 없음 - Azure CLI 로그인 후 DefaultAzureCredential 사용
+  }
+}
+```
+
+로컬에서 Azure 인증을 사용하려면:
+```bash
+az login
+# 또는 관리형 ID 시뮬레이션
+az account get-access-token --resource https://cosmos.azure.com
 ```
 
 **로컬 Cosmos DB Emulator 사용 시:**

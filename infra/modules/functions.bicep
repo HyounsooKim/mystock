@@ -29,10 +29,6 @@ param appInsightsConnectionString string
 @description('Cosmos DB endpoint')
 param cosmosDbEndpoint string
 
-@description('Cosmos DB primary key')
-@secure()
-param cosmosDbKey string
-
 @description('Cosmos DB database name')
 param cosmosDbDatabaseName string
 
@@ -144,10 +140,6 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'COSMOS_ENDPOINT'
           value: cosmosDbEndpoint
-        }
-        {
-          name: 'COSMOS_KEY'
-          value: cosmosDbKey
         }
         {
           name: 'COSMOS_DATABASE_NAME'
