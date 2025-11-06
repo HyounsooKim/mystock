@@ -2,6 +2,13 @@
 
 Azure Functions (Top Movers Updater)를 Azure 클라우드에 배포하는 가이드입니다.
 
+> **🔒 보안 참고**: 이 Function App은 키리스 보안 구성이 적용되어 있습니다:
+> - FTP/SCM 기본 인증 비활성화
+> - 시스템 할당 관리형 ID 활성화
+> - Cosmos DB RBAC 기반 접근 제어
+> 
+> 자세한 내용은 [`docs/SECURITY_KEYLESS_AUTHENTICATION.md`](../../docs/SECURITY_KEYLESS_AUTHENTICATION.md) 참조
+
 ## 📋 목차
 
 - [아키텍처 개요](#아키텍처-개요)
@@ -197,16 +204,28 @@ pip install -r requirements.txt
 func azure functionapp publish func-mystock-topmovers-dev --python
 ```
 
-### 방법 3: GitHub Actions 자동 배포
+### 방법 3: GitHub Actions 자동 배포 (권장)
 
-#### Step 1: Publish Profile 가져오기
+**⚠️ 보안 강화**: 기본 인증이 비활성화되어 있으므로, publish profile 대신 Azure 서비스 프린시플을 사용합니다.
+
+#### Step 1: Azure 서비스 프린시플 생성
 
 ```powershell
-# Publish Profile 다운로드
-az functionapp deployment list-publishing-profiles `
-  --name func-mystock-topmovers-dev `
-  --resource-group rg-mystock-dev `
-  --xml
+# 서비스 프린시플 생성 및 역할 할당
+az ad sp create-for-rbac `
+  --name "github-actions-mystock-functions" `
+  --role "Contributor" `
+  --scopes "/subscriptions/<subscription-id>/resourceGroups/rg-mystock-dev" `
+  --sdk-auth
+
+# 출력 예시 (JSON 저장)
+{
+  "clientId": "...",
+  "clientSecret": "...",
+  "subscriptionId": "...",
+  "tenantId": "...",
+  "resourceManagerEndpointUrl": "..."
+}
 ```
 
 #### Step 2: GitHub Secrets 설정
@@ -214,8 +233,8 @@ az functionapp deployment list-publishing-profiles `
 1. GitHub 리포지토리 → Settings → Secrets and variables → Actions
 2. New repository secret 클릭
 3. 다음 Secret 추가:
-   - Name: `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`
-   - Value: (Step 1에서 가져온 XML 전체 복사)
+   - Name: `AZURE_CREDENTIALS`
+   - Value: (Step 1에서 생성된 JSON 전체 복사)
 
 #### Step 3: 워크플로우 트리거
 
@@ -226,7 +245,7 @@ git commit -m "Update Azure Functions"
 git push origin main
 ```
 
-GitHub Actions가 자동으로 배포를 시작합니다.
+GitHub Actions가 자동으로 RBAC 기반 배포를 시작합니다.
 
 ---
 

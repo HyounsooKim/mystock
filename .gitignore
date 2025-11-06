@@ -298,6 +298,11 @@ override.tf.json
 # Azure
 .azure/
 
+# Bicep compiled outputs
+infra/*.json
+infra/modules/*.json
+!infra/**/local.settings.json
+
 # Certificates
 *.cert
 *.crt

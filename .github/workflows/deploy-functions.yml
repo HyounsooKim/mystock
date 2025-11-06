@@ -66,6 +66,8 @@ jobs:
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         scm-do-build-during-deployment: false
         enable-oryx-build: true
+        # Note: Uses Azure credentials (RBAC) instead of publish profile for enhanced security
+        # Basic authentication is disabled on the Function App
 
     - name: 'Deployment Summary'
       shell: bash
@@ -75,10 +77,10 @@ jobs:
         echo "**Function App:** ${{ env.AZURE_FUNCTIONAPP_NAME }}" >> $GITHUB_STEP_SUMMARY
         echo "**Python Version:** ${{ env.PYTHON_VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo "**Deployed At:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "**Security:** RBAC-based deployment (basic auth disabled)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "#### Function App URLs" >> $GITHUB_STEP_SUMMARY
         echo "- **App URL:** https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
-        echo "- **Kudu (SCM):** https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "#### Next Steps" >> $GITHUB_STEP_SUMMARY
         echo "1. Check [Azure Portal](https://portal.azure.com) for function status" >> $GITHUB_STEP_SUMMARY

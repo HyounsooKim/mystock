@@ -8,6 +8,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
+from azure.identity import DefaultAzureCredential
 import aiohttp
 
 app = func.FunctionApp()
@@ -42,21 +43,46 @@ async def fetch_top_movers_from_api():
 
 
 def save_to_cosmos(data: dict):
-    """Save top movers data to Cosmos DB."""
+    """Save top movers data to Cosmos DB using Managed Identity."""
     endpoint = os.environ.get("COSMOS_ENDPOINT")
-    key = os.environ.get("COSMOS_KEY")
     database_name = os.environ.get("COSMOS_DATABASE_NAME")
     
     logger.info(f"Connecting to Cosmos DB: {endpoint}")
     
-    connection_verify = True
-    if "localhost" in endpoint or "127.0.0.1" in endpoint:
-        logger.warning("Detected localhost endpoint - disabling SSL verification")
-        connection_verify = False
+    # Determine if running locally based on endpoint
+    is_local = bool(endpoint and ("localhost" in endpoint.lower() or "127.0.0.1" in endpoint))
+    
+    # Configure authentication credential
+    try:
+        credential = None
+        
+        if is_local:
+            logger.warning("Detected localhost endpoint")
+            # For local development, try key-based auth first
+            key = os.environ.get("COSMOS_KEY")
+            if key:
+                logger.info("Using key-based authentication for local development")
+                credential = key
+            else:
+                logger.info("No COSMOS_KEY found, attempting Azure credential")
+        
+        # Use DefaultAzureCredential if no key-based credential was set
+        if credential is None:
+            logger.info("Using managed identity authentication (DefaultAzureCredential)")
+            credential = DefaultAzureCredential()
+            
+    except Exception as e:
+        logger.error(f"Failed to initialize Azure credentials: {e}")
+        raise
+    
+    # Configure SSL verification
+    connection_verify = not is_local
+    if is_local:
+        logger.warning("SSL verification disabled for localhost")
     
     client = CosmosClient(
         url=endpoint,
-        credential=key,
+        credential=credential,
         connection_verify=connection_verify
     )
     

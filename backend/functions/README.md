@@ -81,6 +81,8 @@ pip install -r requirements.txt
 
 `local.settings.json` 파일을 수정하여 실제 API 키와 Cosmos DB 정보를 입력합니다:
 
+**⚠️ 로컬 개발 전용**: Azure 배포 시에는 관리형 ID를 사용하므로 `COSMOS_KEY`가 필요 없습니다.
+
 ```json
 {
   "IsEncrypted": false,
@@ -89,10 +91,32 @@ pip install -r requirements.txt
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "ALPHA_VANTAGE_API_KEY": "YOUR_ACTUAL_API_KEY",
     "COSMOS_ENDPOINT": "https://your-cosmos-account.documents.azure.com:443/",
-    "COSMOS_KEY": "YOUR_COSMOS_KEY",
+    "COSMOS_KEY": "YOUR_COSMOS_KEY",  // 로컬 개발용 (Azure 배포 시 자동 제거)
     "COSMOS_DATABASE_NAME": "mystock"
   }
 }
+```
+
+**Azure 인증 사용 (권장 - 로컬 개발):**
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "ALPHA_VANTAGE_API_KEY": "YOUR_ACTUAL_API_KEY",
+    "COSMOS_ENDPOINT": "https://your-cosmos-account.documents.azure.com:443/",
+    "COSMOS_DATABASE_NAME": "mystock"
+    // COSMOS_KEY 없음 - Azure CLI 로그인 후 DefaultAzureCredential 사용
+  }
+}
+```
+
+로컬에서 Azure 인증을 사용하려면:
+```bash
+az login
+# 또는 관리형 ID 시뮬레이션
+az account get-access-token --resource https://cosmos.azure.com
 ```
 
 **로컬 Cosmos DB Emulator 사용 시:**
@@ -282,8 +306,25 @@ func azure functionapp publish func-mystock-topmovers
 - **Cosmos DB**: 400 RU/s = 월 ~$24
 - **총 예상 비용**: ~$24/월
 
+## 🔒 보안
+
+### 인증 및 접근 제어
+
+- **관리형 ID**: 시스템 할당 관리형 ID 활성화
+- **FTP**: 기본 인증 비활성화 (`ftpsState: 'Disabled'`)
+- **SCM (Kudu)**: 기본 인증 비활성화
+- **Cosmos DB**: RBAC 기반 접근 (Built-in Data Contributor 역할)
+
+### 배포 보안
+
+- **GitHub Actions**: Azure AD 인증 사용 (publish profile 미사용)
+- **로컬 개발**: Azure CLI 로그인 필요
+
+자세한 내용은 [`docs/SECURITY_KEYLESS_AUTHENTICATION.md`](../../docs/SECURITY_KEYLESS_AUTHENTICATION.md) 참조
+
 ## 📚 참고 자료
 
 - [Azure Functions Python Developer Guide](https://docs.microsoft.com/azure/azure-functions/functions-reference-python)
 - [Cosmos DB Python SDK](https://docs.microsoft.com/azure/cosmos-db/sql/sdk-python)
 - [Alpha Vantage API Documentation](https://www.alphavantage.co/documentation/)
+- [Azure Functions 보안](https://docs.microsoft.com/azure/azure-functions/security-concepts)

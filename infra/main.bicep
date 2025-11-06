@@ -122,9 +122,23 @@ module functions 'modules/functions.bicep' = {
     logAnalyticsWorkspaceId: monitoring.outputs.workspaceId
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     cosmosDbEndpoint: cosmosDb.outputs.endpoint
-    cosmosDbKey: cosmosDb.outputs.primaryKey
     cosmosDbDatabaseName: cosmosDb.outputs.databaseName
     alphaVantageApiKey: alphaVantageApiKey
+  }
+}
+
+// Cosmos DB Built-in Data Contributor role definition
+// Reference: https://docs.microsoft.com/en-us/azure/cosmos-db/role-based-access-control
+var cosmosDbDataContributorRoleDefinitionId = '00000000-0000-0000-0000-000000000002'
+
+// Grant Function App managed identity access to Cosmos DB
+module cosmosRoleAssignment 'modules/cosmosdb-role-assignment.bicep' = {
+  name: 'cosmosdb-role-assignment'
+  scope: rg
+  params: {
+    cosmosAccountName: cosmosDb.outputs.accountName
+    roleDefinitionId: cosmosDbDataContributorRoleDefinitionId
+    principalId: functions.outputs.functionAppPrincipalId
   }
 }
 
