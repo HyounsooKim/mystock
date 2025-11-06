@@ -49,19 +49,33 @@ def save_to_cosmos(data: dict):
     
     logger.info(f"Connecting to Cosmos DB: {endpoint}")
     
-    # Use DefaultAzureCredential for managed identity authentication
-    # Falls back to environment variables, managed identity, etc.
-    credential = DefaultAzureCredential()
+    # Determine if running locally based on endpoint
+    is_local = endpoint and ("localhost" in endpoint.lower() or "127.0.0.1" in endpoint)
     
-    connection_verify = True
-    if "localhost" in endpoint or "127.0.0.1" in endpoint:
-        logger.warning("Detected localhost endpoint - disabling SSL verification")
-        connection_verify = False
-        # For local development, fall back to key-based auth if available
-        key = os.environ.get("COSMOS_KEY")
-        if key:
-            logger.warning("Using key-based authentication for local development")
-            credential = key
+    # Configure authentication credential
+    try:
+        if is_local:
+            logger.warning("Detected localhost endpoint")
+            # For local development, try key-based auth first
+            key = os.environ.get("COSMOS_KEY")
+            if key:
+                logger.info("Using key-based authentication for local development")
+                credential = key
+            else:
+                logger.info("No COSMOS_KEY found, attempting Azure credential")
+                credential = DefaultAzureCredential()
+        else:
+            # Production: Use managed identity via DefaultAzureCredential
+            logger.info("Using managed identity authentication (DefaultAzureCredential)")
+            credential = DefaultAzureCredential()
+    except Exception as e:
+        logger.error(f"Failed to initialize Azure credentials: {e}")
+        raise
+    
+    # Configure SSL verification
+    connection_verify = not is_local
+    if is_local:
+        logger.warning("SSL verification disabled for localhost")
     
     client = CosmosClient(
         url=endpoint,

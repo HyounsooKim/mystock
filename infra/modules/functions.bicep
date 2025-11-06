@@ -165,7 +165,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
       use32BitWorkerProcess: false
       alwaysOn: false // Not supported in Consumption plan
     }
-    // Security: Disable basic authentication for SCM and FTP
+    // Note: Public network access is enabled but protected by Azure AD authentication
     publicNetworkAccess: 'Enabled'
   }
 }
