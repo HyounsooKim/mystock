@@ -98,6 +98,9 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   location: location
   tags: tags
   kind: 'functionapp,linux'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     reserved: true
@@ -170,6 +173,26 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
       use32BitWorkerProcess: false
       alwaysOn: false // Not supported in Consumption plan
     }
+    // Security: Disable basic authentication for SCM and FTP
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+// Disable FTP basic authentication
+resource functionAppFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2023-01-01' = {
+  name: 'ftp'
+  parent: functionApp
+  properties: {
+    allow: false
+  }
+}
+
+// Disable SCM (Kudu) basic authentication
+resource functionAppScmBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2023-01-01' = {
+  name: 'scm'
+  parent: functionApp
+  properties: {
+    allow: false
   }
 }
 
@@ -207,3 +230,4 @@ output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
 output functionAppDefaultHostName string = functionApp.properties.defaultHostName
 output storageAccountName string = storageAccount.name
+output functionAppPrincipalId string = functionApp.identity.principalId

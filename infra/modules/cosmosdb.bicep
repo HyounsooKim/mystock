@@ -102,3 +102,4 @@ output primaryKey string = cosmosAccount.listKeys().primaryMasterKey
 output databaseName string = databaseName
 output containerName string = containerName
 output accountName string = cosmosAccount.name
+output accountId string = cosmosAccount.id

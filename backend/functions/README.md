@@ -282,8 +282,25 @@ func azure functionapp publish func-mystock-topmovers
 - **Cosmos DB**: 400 RU/s = 월 ~$24
 - **총 예상 비용**: ~$24/월
 
+## 🔒 보안
+
+### 인증 및 접근 제어
+
+- **관리형 ID**: 시스템 할당 관리형 ID 활성화
+- **FTP**: 기본 인증 비활성화 (`ftpsState: 'Disabled'`)
+- **SCM (Kudu)**: 기본 인증 비활성화
+- **Cosmos DB**: RBAC 기반 접근 (Built-in Data Contributor 역할)
+
+### 배포 보안
+
+- **GitHub Actions**: Azure AD 인증 사용 (publish profile 미사용)
+- **로컬 개발**: Azure CLI 로그인 필요
+
+자세한 내용은 [`docs/SECURITY_KEYLESS_AUTHENTICATION.md`](../../docs/SECURITY_KEYLESS_AUTHENTICATION.md) 참조
+
 ## 📚 참고 자료
 
 - [Azure Functions Python Developer Guide](https://docs.microsoft.com/azure/azure-functions/functions-reference-python)
 - [Cosmos DB Python SDK](https://docs.microsoft.com/azure/cosmos-db/sql/sdk-python)
 - [Alpha Vantage API Documentation](https://www.alphavantage.co/documentation/)
+- [Azure Functions 보안](https://docs.microsoft.com/azure/azure-functions/security-concepts)
