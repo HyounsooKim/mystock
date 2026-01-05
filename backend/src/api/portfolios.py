@@ -559,7 +559,7 @@ async def update_holding(
         # Update holding
         holding = holdings[holding_index]
         holding["quantity"] = request.quantity
-        holding["avg_price"] = request.avg_price
+        holding["avg_price"] = float(request.avg_price)  # Convert Decimal to float for JSON serialization
         holdings[holding_index] = holding
         
         # Update portfolio
