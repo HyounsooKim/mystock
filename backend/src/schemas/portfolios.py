@@ -58,7 +58,7 @@ class HoldingResponse(BaseModel):
     portfolio_id: str = Field(..., description="Portfolio ID (UUID)", examples=["cab647a5..."])
     symbol: str = Field(..., description="Stock symbol", examples=["AAPL"])
     company_name: Optional[str] = Field(None, description="Company name", examples=["Apple Inc."])
-    quantity: int = Field(..., description="Number of shares", examples=[10])
+    quantity: Decimal = Field(..., description="Number of shares", examples=[10.5])
     avg_price: Decimal = Field(..., description="Average price per share", examples=[175.50])
     cost_basis: Decimal = Field(..., description="Total investment", examples=[1755.00])
     current_price: Optional[Decimal] = Field(None, description="Current market price", examples=[180.00])
@@ -78,13 +78,13 @@ class AddHoldingRequest(BaseModel):
     
     Attributes:
         symbol: Stock symbol (uppercase, alphanumeric + dots)
-        quantity: Number of shares (positive integer)
+        quantity: Number of shares (positive decimal, supports fractional shares)
         avg_price: Average purchase price (positive decimal)
         notes: Optional user notes (max 500 characters)
     """
     
     symbol: str = Field(..., description="Stock symbol", examples=["AAPL"])
-    quantity: int = Field(..., gt=0, description="Number of shares", examples=[10])
+    quantity: Decimal = Field(..., gt=0, description="Number of shares", examples=[10.5])
     avg_price: Decimal = Field(..., gt=0, description="Average price per share", examples=[175.50])
     notes: Optional[str] = Field(None, max_length=500, description="User notes", examples=["Bought on dip"])
     
@@ -119,12 +119,12 @@ class UpdateHoldingRequest(BaseModel):
     """Request schema for updating an existing holding.
     
     Attributes:
-        quantity: Number of shares (optional, positive integer)
+        quantity: Number of shares (optional, positive decimal, supports fractional shares)
         avg_price: Average purchase price (optional, positive decimal)
         notes: Optional user notes (max 500 characters)
     """
     
-    quantity: Optional[int] = Field(None, gt=0, description="Number of shares", examples=[15])
+    quantity: Optional[Decimal] = Field(None, gt=0, description="Number of shares", examples=[15.5])
     avg_price: Optional[Decimal] = Field(None, gt=0, description="Average price per share", examples=[177.00])
     notes: Optional[str] = Field(None, max_length=500, description="User notes", examples=["Added more shares"])
 
