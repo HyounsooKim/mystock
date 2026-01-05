@@ -295,7 +295,7 @@ async def get_portfolio_summary(
                 portfolio_id=portfolio_id,
                 symbol=symbol,
                 company_name=stock_info.get("company_name"),
-                quantity=int(quantity),
+                quantity=quantity,  # Use Decimal value
                 avg_price=avg_price,
                 cost_basis=cost_basis,
                 current_price=current_price_decimal if current_price else None,
@@ -559,7 +559,7 @@ async def update_holding(
         # Update holding
         holding = holdings[holding_index]
         if request.quantity is not None:
-            holding["quantity"] = request.quantity
+            holding["quantity"] = float(request.quantity)  # Convert Decimal to float for JSON serialization
         if request.avg_price is not None:
             holding["avg_price"] = float(request.avg_price)  # Convert Decimal to float for JSON serialization
         holdings[holding_index] = holding
@@ -601,7 +601,7 @@ async def update_holding(
             portfolio_id=portfolio_id,
             symbol=holding["symbol"],
             company_name=company_name,
-            quantity=int(quantity),  # Use updated value from holding
+            quantity=quantity,  # Use Decimal value from holding
             avg_price=avg_price,
             cost_basis=cost_basis,
             current_price=current_price_decimal,
