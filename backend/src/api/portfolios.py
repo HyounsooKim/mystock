@@ -295,7 +295,7 @@ async def get_portfolio_summary(
                 portfolio_id=portfolio_id,
                 symbol=symbol,
                 company_name=stock_info.get("company_name"),
-                quantity=quantity,  # Use Decimal value
+                quantity=int(quantity),
                 avg_price=avg_price,
                 cost_basis=cost_basis,
                 current_price=current_price_decimal if current_price else None,
@@ -558,10 +558,8 @@ async def update_holding(
         
         # Update holding
         holding = holdings[holding_index]
-        if request.quantity is not None:
-            holding["quantity"] = float(request.quantity)  # Convert Decimal to float for JSON serialization
-        if request.avg_price is not None:
-            holding["avg_price"] = float(request.avg_price)  # Convert Decimal to float for JSON serialization
+        holding["quantity"] = request.quantity
+        holding["avg_price"] = request.avg_price
         holdings[holding_index] = holding
         
         # Update portfolio
@@ -577,12 +575,12 @@ async def update_holding(
         
         logger.info(f"Updated holding {holding_id} in portfolio {portfolio_id}")
         
-        # Calculate P&L for response (use updated values from holding)
+        # Calculate P&L for response
         stock_info = get_stock_info(holding["symbol"])
         current_price = stock_info.get("current_price")
         company_name = stock_info.get("company_name")
-        quantity = Decimal(str(holding["quantity"]))
-        avg_price = Decimal(str(holding["avg_price"]))
+        quantity = Decimal(str(request.quantity))
+        avg_price = Decimal(str(request.avg_price))
         cost_basis = quantity * avg_price
         
         if current_price:
@@ -601,7 +599,7 @@ async def update_holding(
             portfolio_id=portfolio_id,
             symbol=holding["symbol"],
             company_name=company_name,
-            quantity=quantity,  # Use Decimal value from holding
+            quantity=request.quantity,
             avg_price=avg_price,
             cost_basis=cost_basis,
             current_price=current_price_decimal,
